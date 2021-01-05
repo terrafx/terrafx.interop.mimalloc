@@ -35,6 +35,12 @@ namespace TerraFX.Interop
         [return: NativeTypeName("size_t")]
         private static extern nuint strlen([NativeTypeName("const char*")] sbyte* str);
 
+        private static int VM_MAKE_TAG(int tag)
+        {
+            mi_assert_internal(IsMacOS);
+            return tag << 24;
+        }
+
         [DllImport("libc", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         private static extern nuint wcslen([NativeTypeName("const wchar_t*")] ushort* str);
 

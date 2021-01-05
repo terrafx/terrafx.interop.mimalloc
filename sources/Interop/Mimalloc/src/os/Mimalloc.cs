@@ -277,6 +277,18 @@ namespace TerraFX.Interop
             int flags = MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE;
             int fd = -1;
 
+            if (IsMacOS)
+            {
+                // macOS: tracking anonymous page with a specific ID. (All up to 98 are taken officially but LLVM sanitizers had taken 99)
+                int os_tag = (int)mi_option_get(mi_option_os_tag);
+
+                if ((os_tag < 100) || (os_tag > 255))
+                {
+                    os_tag = 100;
+                }
+                fd = VM_MAKE_TAG(os_tag);
+            }
+
             if ((large_only || use_large_os_page(size, try_alignment)) && allow_large)
             {
                 nuint try_ok = mi_atomic_load_acquire(ref large_page_try_ok);
@@ -306,6 +318,8 @@ namespace TerraFX.Interop
                     {
                         lflags |= MAP_HUGE_2MB;
                     }
+
+                    lfd |= VM_FLAGS_SUPERPAGE_SIZE_2MB;
 
                     if (large_only || (lflags != flags))
                     {
@@ -344,20 +358,23 @@ namespace TerraFX.Interop
                 is_large = false;
                 p = mi_unix_mmapx(addr, size, try_alignment, protect_flags, flags, fd);
 
-                // Many Linux systems don't allow MAP_HUGETLB but they support instead
-                // transparent huge pages (THP). It is not required to call `madvise` with MADV_HUGE
-                // though since properly aligned allocations will already use large pages if available
-                // in that case -- in particular for our large regions (in `memory.c`).
-                // However, some systems only allow THP if called with explicit `madvise`, so
-                // when large OS pages are enabled for mimalloc, we call `madvice` anyways.
-
-                if (allow_large && use_large_os_page(size, try_alignment))
+                if (MADV_HUGEPAGE != 0)
                 {
-                    if (posix_madvise(p, size, MADV_HUGEPAGE) == 0)
+                    // Many Linux systems don't allow MAP_HUGETLB but they support instead
+                    // transparent huge pages (THP). It is not required to call `madvise` with MADV_HUGE
+                    // though since properly aligned allocations will already use large pages if available
+                    // in that case -- in particular for our large regions (in `memory.c`).
+                    // However, some systems only allow THP if called with explicit `madvise`, so
+                    // when large OS pages are enabled for mimalloc, we call `madvice` anyways.
+
+                    if (allow_large && use_large_os_page(size, try_alignment))
                     {
-                        // possibly
-                        is_large = true;
-                    };
+                        if (posix_madvise(p, size, MADV_HUGEPAGE) == 0)
+                        {
+                            // possibly
+                            is_large = true;
+                        };
+                    }
                 }
             }
 
@@ -857,13 +874,21 @@ namespace TerraFX.Interop
             }
             else
             {
-                
-                int err = posix_madvise(start, csize, (int)mi_atomic_load_relaxed(ref advice));
+                int err;
 
-                if ((err != 0) && (errno == EINVAL) && (advice == MADV_FREE))
+                if (MADV_FREE != 0)
                 {
-                    // if MADV_FREE is not supported, fall back to MADV_DONTNEED from now on
-                    mi_atomic_store_release(ref advice, MADV_DONTNEED);
+                    err = posix_madvise(start, csize, (int)mi_atomic_load_relaxed(ref advice));
+
+                    if ((err != 0) && (errno == EINVAL) && (advice == (nuint)MADV_FREE))
+                    {
+                        // if MADV_FREE is not supported, fall back to MADV_DONTNEED from now on
+                        mi_atomic_store_release(ref advice, (nuint)MADV_DONTNEED);
+                        err = posix_madvise(start, csize, MADV_DONTNEED);
+                    }
+                }
+                else
+                {
                     err = posix_madvise(start, csize, MADV_DONTNEED);
                 }
 

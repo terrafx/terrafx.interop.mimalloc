@@ -13,50 +13,6 @@ namespace TerraFX.Interop
 {
     public static unsafe partial class Mimalloc
     {
-        private const int _PC_PATH_MAX = 4;
-
-        private const int _SC_PAGESIZE = 30;
-
-        private const int HUGETLB_FLAG_ENCODE_1GB = 30 << HUGETLB_FLAG_ENCODE_SHIFT;
-
-        private const int HUGETLB_FLAG_ENCODE_2MB = 21 << HUGETLB_FLAG_ENCODE_SHIFT;
-
-        private const int HUGETLB_FLAG_ENCODE_SHIFT = 26;
-
-        private const int RUSAGE_SELF = 0;
-
-        private const int MADV_DONTNEED = 4;
-
-        private const int MADV_FREE = 8;
-
-        private const int MADV_HUGEPAGE = 14;
-
-        private const int MAP_ANON = MAP_ANONYMOUS;
-
-        private const int MAP_ANONYMOUS = 0x20;
-
-        private const int MAP_FIXED = 0x10;
-
-        private const int MAP_PRIVATE = 0x02;
-
-        private const int MAP_HUGE_1GB = HUGETLB_FLAG_ENCODE_1GB;
-
-        private const int MAP_HUGE_2MB = HUGETLB_FLAG_ENCODE_2MB;
-
-        private const int MAP_HUGETLB = 0x040000;
-
-        private const int MAP_NORESERVE = 0x4000;
-
-        private const nuint MPOL_PREFERRED = 1;
-
-        private const int PROT_NONE = 0x0;
-
-        private const int PROT_READ = 0x1;
-
-        private const int PROT_WRITE = 0x2;
-
-        private const int R_OK = 4;
-
         [DllImport("libc", ExactSpelling = true)]
         private static extern int access([NativeTypeName("const char*")] sbyte* path, int amode);
 

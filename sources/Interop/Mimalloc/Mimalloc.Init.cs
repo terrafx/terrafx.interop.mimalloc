@@ -11,7 +11,7 @@ namespace TerraFX.Interop
     {
         public static event DllImportResolver? ResolveLibrary;
 
-        // Helpers
+        // general helpers
 
         private static int last_errno;
 
@@ -24,8 +24,6 @@ namespace TerraFX.Interop
         private static readonly bool IsWindows = OperatingSystem.IsWindows();
 
         private static readonly bool IsWindows10OrLater = OperatingSystem.IsWindowsVersionAtLeast(10);
-
-        private static readonly void* MAP_FAILED = unchecked((void*)-1);
 
         // MI_DEBUG_FULL
         // MI_OVERRIDE
@@ -60,6 +58,62 @@ namespace TerraFX.Interop
 
         private static readonly delegate*<delegate* unmanaged[Cdecl]<void>> std_get_new_handler
             = IsWindows ? &win32_std_get_new_handler : (IsUnix ? &unix_std_get_new_handler : null);
+
+        //
+        // libc values
+        //
+
+        private static readonly int _PC_PATH_MAX = IsLinux ? 4 : (IsMacOS ? 5 : 0);
+
+        private static readonly int _SC_PAGESIZE = IsLinux ? 30 : (IsMacOS ? 29 : 0);
+
+        private static readonly int HUGETLB_FLAG_ENCODE_1GB = IsLinux ? (30 << HUGETLB_FLAG_ENCODE_SHIFT) : 0;
+
+        private static readonly int HUGETLB_FLAG_ENCODE_2MB = IsLinux ? (21 << HUGETLB_FLAG_ENCODE_SHIFT) : 0;
+
+        private static readonly int HUGETLB_FLAG_ENCODE_SHIFT = IsLinux ? 26 : 0;
+
+        private static readonly int RUSAGE_SELF = 0;
+
+        private static readonly int MADV_DONTNEED = IsUnix ? 4 : 0;
+
+        private static readonly int MADV_FREE = IsLinux ? 8 : (IsMacOS ? 5 : 0);
+
+        private static readonly int MADV_HUGEPAGE = IsLinux ? 14 : 0;
+
+        private static readonly int MAP_ANON = MAP_ANONYMOUS;
+
+        private static readonly int MAP_ANONYMOUS = IsLinux ? 0x20 : (IsMacOS ? 0x1000 : 0);
+
+        private static readonly void* MAP_FAILED = unchecked((void*)-1);
+
+        private static readonly int MAP_FIXED = IsUnix ? 0x10 : 0;
+
+        private static readonly int MAP_PRIVATE = IsUnix ? 0x02 : 0;
+
+        private static readonly int MAP_HUGE_1GB = IsLinux ? HUGETLB_FLAG_ENCODE_1GB : 0;
+
+        private static readonly int MAP_HUGE_2MB = IsLinux ? HUGETLB_FLAG_ENCODE_2MB : 0;
+
+        private static readonly int MAP_HUGETLB = IsLinux ? 0x040000 : 0;
+
+        private static readonly int MAP_NORESERVE = IsLinux ? 0x4000 : (IsMacOS ? 0x40 : 0);
+
+        private static readonly nuint MPOL_PREFERRED = IsLinux ? 1 : 0;
+
+        private static readonly int PROT_NONE = 0x0;
+
+        private static readonly int PROT_READ = IsUnix ? 0x1 : 0;
+
+        private static readonly int PROT_WRITE = IsUnix ? 0x2 : 0;
+
+        private static readonly int R_OK = IsUnix ? 4 : 0;
+
+        private static readonly int SUPERPAGE_SIZE_2MB = IsMacOS ? 2 : 0;
+
+        private static readonly int VM_FLAGS_SUPERPAGE_SHIFT = IsMacOS ? 16 : 0;
+
+        private static readonly int VM_FLAGS_SUPERPAGE_SIZE_2MB = IsMacOS ? (SUPERPAGE_SIZE_2MB << VM_FLAGS_SUPERPAGE_SHIFT) : 0;
 
         //
         // mimalloc.h
@@ -332,10 +386,10 @@ namespace TerraFX.Interop
         [NativeTypeName("std::atomic<uintptr_t>")]
         private static volatile nuint large_page_try_ok = 0;
 
-        private static bool mi_huge_pages_available = true;
+        private static bool mi_huge_pages_available = IsUnix ? (MAP_HUGE_1GB != 0) : true;
 
         [NativeTypeName("std::atomic<uintptr_t>")]
-        private static volatile nuint advice = MADV_FREE;
+        private static volatile nuint advice = (nuint)MADV_FREE;
 
         // To ensure proper alignment, use our own area for huge OS pages
 
