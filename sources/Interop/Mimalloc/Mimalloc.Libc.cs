@@ -18,7 +18,7 @@ namespace TerraFX.Interop
 
         [DllImport("libc", CallingConvention = CallingConvention.Cdecl, EntryPoint = "_ZSt15get_new_handlerv", ExactSpelling = true)]
         [return: NativeTypeName("std::new_handler")]
-        private static extern delegate* unmanaged[Cdecl]<void> linux_std_get_new_handler();
+        private static extern delegate* unmanaged[Cdecl]<void> unix_std_get_new_handler();
 
         [DllImport("libc", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         private static extern void* memcpy(void* destination, [NativeTypeName("const void*")] void* source, [NativeTypeName("size_t")] nuint num);

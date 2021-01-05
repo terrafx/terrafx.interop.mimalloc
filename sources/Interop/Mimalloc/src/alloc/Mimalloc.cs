@@ -894,7 +894,7 @@ namespace TerraFX.Interop
         [return: NativeTypeName("size_t")]
         private static nuint mi_path_max()
         {
-            mi_assert_internal((MI_DEBUG > 1) && IsLinux);
+            mi_assert_internal((MI_DEBUG > 1) && IsUnix);
             return path_max;
         }
 

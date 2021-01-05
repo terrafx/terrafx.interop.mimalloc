@@ -510,7 +510,7 @@ namespace TerraFX.Interop
                 peak_commit = info.PeakPagefileUsage;
                 page_faults = info.PageFaultCount;
             }
-            else if (IsLinux)
+            else if (IsUnix)
             {
                 elapsed = _mi_clock_end(mi_process_start);
 

@@ -233,7 +233,7 @@ namespace TerraFX.Interop
 
         private static void* mi_unix_mmapx(void* addr, [NativeTypeName("size_t")] nuint size, [NativeTypeName("size_t")] nuint try_alignment, int protect_flags, int flags, int fd)
         {
-            mi_assert_internal((MI_DEBUG > 1) && IsLinux);
+            mi_assert_internal((MI_DEBUG > 1) && IsUnix);
             void* p = null;
 
             if (Environment.Is64BitProcess)
@@ -269,7 +269,7 @@ namespace TerraFX.Interop
         private static void* mi_unix_mmap(void* addr, [NativeTypeName("size_t")] nuint size, [NativeTypeName("size_t")] nuint try_alignment, int protect_flags, bool large_only, bool allow_large, [NativeTypeName("bool*")] out bool is_large)
         {
 #pragma warning disable CS0420
-            mi_assert_internal((MI_DEBUG > 1) && IsLinux);
+            mi_assert_internal((MI_DEBUG > 1) && IsUnix);
 
             void* p = null;
             is_large = false;
@@ -704,7 +704,7 @@ namespace TerraFX.Interop
 
         private static void mi_mprotect_hint(int err)
         {
-            if (IsLinux && (MI_SECURE >= 2) && (err == ENOMEM))
+            if (IsUnix && (MI_SECURE >= 2) && (err == ENOMEM))
             {
                 // guard page around every mimalloc page
                 _mi_warning_message("the previous warning may have been caused by a low memory map limit.\n  On Linux this is controlled by the vm.max_map_count. For example:\n  > sudo sysctl -w vm.max_map_count=262144\n");
@@ -1004,7 +1004,7 @@ namespace TerraFX.Interop
         [return: NativeTypeName("long")]
         private static nint mi_os_mbind(void* start, [NativeTypeName("unsigned long")] nuint len, [NativeTypeName("unsigned long")] nuint mode, [NativeTypeName("const unsigned long*")] nuint* nmask, [NativeTypeName("unsigned long")] nuint maxnode, [NativeTypeName("unsigned")] uint flags)
         {
-            mi_assert_internal((MI_DEBUG > 1) && IsLinux);
+            mi_assert_internal((MI_DEBUG > 1) && IsUnix);
             return 0;
         }
 

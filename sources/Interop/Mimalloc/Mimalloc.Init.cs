@@ -15,7 +15,11 @@ namespace TerraFX.Interop
 
         private static int last_errno;
 
+        private static readonly bool IsMacOS = OperatingSystem.IsMacOS();
+
         private static readonly bool IsLinux = OperatingSystem.IsLinux();
+
+        private static readonly bool IsUnix = IsLinux || IsMacOS;
 
         private static readonly bool IsWindows = OperatingSystem.IsWindows();
 
@@ -55,7 +59,7 @@ namespace TerraFX.Interop
             = (delegate* unmanaged<IntPtr, void*, nuint, uint, uint, MEM_EXTENDED_PARAMETER*, uint, void*>)((VirtualAlloc2FromApp == null) ? get_export("kernel32", nameof(VirtualAlloc2)) : VirtualAlloc2FromApp);
 
         private static readonly delegate*<delegate* unmanaged[Cdecl]<void>> std_get_new_handler
-            = IsWindows ? &win32_std_get_new_handler : (IsLinux ? &linux_std_get_new_handler : null);
+            = IsWindows ? &win32_std_get_new_handler : (IsUnix ? &unix_std_get_new_handler : null);
 
         //
         // mimalloc.h

@@ -468,6 +468,13 @@ namespace TerraFX.Interop
                     return true;
                 }
             }
+            else if (IsMacOS)
+            {
+                if (NativeLibrary.TryLoad("libSystem", assembly, searchPath, out nativeLibrary))
+                {
+                    return true;
+                }
+            }
 
             return NativeLibrary.TryLoad("libc", assembly, searchPath, out nativeLibrary);
         }
