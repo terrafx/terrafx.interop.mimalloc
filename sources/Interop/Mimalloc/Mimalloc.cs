@@ -10,6 +10,7 @@ namespace TerraFX.Interop
 {
     public static unsafe partial class Mimalloc
     {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int get_last_errno() => last_errno;
 
         [ModuleInitializer]
@@ -37,10 +38,13 @@ namespace TerraFX.Interop
             mi_process_init();
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void abort() => Environment.Exit(-1);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void atexit(EventHandler func) => AppDomain.CurrentDomain.ProcessExit += func;
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static nuint* create_mi_arenas() => (nuint*)RuntimeHelpers.AllocateTypeAssociatedMemory(typeof(Mimalloc), (int)(SizeOf<nuint>() * MI_MAX_ARENAS));
 
         private static mi_heap_t* create_mi_heap_default()
@@ -109,6 +113,7 @@ namespace TerraFX.Interop
             return mi_heap_empty_pages_free_direct;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static mem_region_t* create_regions() => (mem_region_t*)RuntimeHelpers.AllocateTypeAssociatedMemory(typeof(Mimalloc), (int)(SizeOf<mem_region_t>() * MI_REGION_MAX));
 
         private static mi_tld_t* create_tld()
@@ -118,6 +123,7 @@ namespace TerraFX.Interop
             return tld;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void exit(int status) => Environment.Exit(status);
 
         private static uint get_app_context_data(string name, uint defaultValue)

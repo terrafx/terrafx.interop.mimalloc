@@ -17,6 +17,7 @@ namespace TerraFX.Interop
         ----------------------------------------------------------- */
 
         // Index a block in a page
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static mi_block_t* mi_page_block_at([NativeTypeName("const mi_page_t*")] mi_page_t* page, void* page_start, [NativeTypeName("size_t")] nuint block_size, [NativeTypeName("size_t")] nuint i)
         {
             mi_assert_internal((MI_DEBUG > 1) && (page != null));
@@ -46,6 +47,7 @@ namespace TerraFX.Interop
         }
 
         // Start of the page available memory
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [return: NativeTypeName("uint8_t*")]
         private static byte* mi_page_area([NativeTypeName("const mi_page_t*")] mi_page_t* page)
         {
@@ -281,6 +283,7 @@ namespace TerraFX.Interop
         ----------------------------------------------------------- */
 
         // called from segments when reclaiming abandoned pages
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static partial void _mi_page_reclaim(mi_heap_t* heap, mi_page_t* page)
         {
             mi_assert_expensive((MI_DEBUG > 2) && mi_page_is_valid_init(page));
@@ -328,6 +331,7 @@ namespace TerraFX.Interop
         }
 
         // Get a fresh page to use
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static mi_page_t* mi_page_fresh(mi_heap_t* heap, mi_page_queue_t* pq)
         {
             mi_assert_internal((MI_DEBUG > 1) && mi_heap_contains_queue(heap, pq));
@@ -989,6 +993,7 @@ namespace TerraFX.Interop
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial void mi_register_deferred_free(mi_deferred_free_fun? fn, void* arg)
         {
             deferred_free = fn;

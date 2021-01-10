@@ -4,6 +4,7 @@
 // The original code is Copyright © Microsoft. All rights reserved. Licensed under the MIT License (MIT).
 
 using System;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using static TerraFX.Interop.mi_collect_t;
 using static TerraFX.Interop.mi_delayed_t;
@@ -61,6 +62,8 @@ namespace TerraFX.Interop
             return true;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+
         private static bool mi_heap_page_is_valid(mi_heap_t* heap, mi_page_queue_t* pq, mi_page_t* page, void* arg1, void* arg2)
         {
             mi_assert_internal((MI_DEBUG > 1) && (MI_DEBUG >= 2));
@@ -73,6 +76,7 @@ namespace TerraFX.Interop
             return true;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool mi_heap_is_valid(mi_heap_t* heap)
         {
             mi_assert_internal((MI_DEBUG > 1) && (MI_DEBUG >= 3));
@@ -112,6 +116,7 @@ namespace TerraFX.Interop
             return true;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool mi_heap_page_never_delayed_free(mi_heap_t* heap, mi_page_queue_t* pq, mi_page_t* page, void* arg1, void* arg2)
         {
             _mi_page_use_delayed_free(page, MI_NEVER_DELAYED_FREE, false);
@@ -120,7 +125,7 @@ namespace TerraFX.Interop
             return true;
         }
 
-        static void mi_heap_collect_ex(mi_heap_t* heap, mi_collect_t collect)
+        private static void mi_heap_collect_ex(mi_heap_t* heap, mi_collect_t collect)
         {
 #pragma warning disable CS0420
             if (heap == null)
@@ -170,18 +175,23 @@ namespace TerraFX.Interop
 #pragma warning restore CS0420
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static partial void _mi_heap_collect_abandon(mi_heap_t* heap) => mi_heap_collect_ex(heap, MI_ABANDON);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void mi_heap_collect(mi_heap_t* heap, bool force) => mi_heap_collect_ex(heap, force ? MI_FORCE : MI_NORMAL);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial void mi_heap_collect(IntPtr heap, bool force) => mi_heap_collect((mi_heap_t*)heap, force);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial void mi_collect(bool force) => mi_heap_collect(mi_get_default_heap(), force);
 
         /* -----------------------------------------------------------
           Heap new
         ----------------------------------------------------------- */
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial IntPtr mi_heap_get_default() => (IntPtr)mi_get_default_heap();
 
         public static partial IntPtr mi_heap_get_backing()
@@ -213,6 +223,7 @@ namespace TerraFX.Interop
             return (IntPtr)heap;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static partial nuint _mi_heap_random_next(mi_heap_t* heap) => _mi_random_next(ref heap->random);
 
         // zero out the page queues
@@ -333,6 +344,7 @@ namespace TerraFX.Interop
             return true;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static partial void _mi_heap_destroy_pages(mi_heap_t* heap)
         {
             mi_heap_visit_pages(heap, _mi_heap_page_destroy, null, null);
@@ -358,6 +370,7 @@ namespace TerraFX.Interop
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial void mi_heap_destroy(IntPtr heap) => mi_heap_destroy((mi_heap_t*)heap);
 
         /* -----------------------------------------------------------
@@ -382,7 +395,7 @@ namespace TerraFX.Interop
             // note: appending waits for each page to not be in the `MI_DELAYED_FREEING` state
             // so after this only the new heap will get delayed frees
 
-            for (nuint  i = 0; i <= MI_BIN_FULL; i++)
+            for (nuint i = 0; i <= MI_BIN_FULL; i++)
             {
                 mi_page_queue_t* pq = &heap->pages.e0 + i;
                 mi_page_queue_t* append = &from->pages.e0 + i;
@@ -428,6 +441,7 @@ namespace TerraFX.Interop
             mi_heap_free(heap);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial void mi_heap_delete(IntPtr heap) => mi_heap_delete((mi_heap_t*)heap);
 
         private static mi_heap_t* mi_heap_set_default(mi_heap_t* heap)
@@ -439,6 +453,7 @@ namespace TerraFX.Interop
             return old;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial IntPtr mi_heap_set_default(IntPtr heap) => (IntPtr)mi_heap_set_default((mi_heap_t*)heap);
 
         /* -----------------------------------------------------------
@@ -466,12 +481,14 @@ namespace TerraFX.Interop
             return mi_page_heap(_mi_segment_page_of(segment, p));
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool mi_heap_contains_block(mi_heap_t* heap, [NativeTypeName("const void*")] void* p)
         {
             mi_assert((MI_DEBUG != 0) && (heap != null));
             return heap == mi_heap_of_block(p);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial bool mi_heap_contains_block(IntPtr heap, void* p) => mi_heap_contains_block((mi_heap_t*)heap, p);
 
         private static bool mi_heap_page_check_owned(mi_heap_t* heap, mi_page_queue_t* pq, mi_page_t* page, void* p, void* vfound)
@@ -503,8 +520,10 @@ namespace TerraFX.Interop
             return found;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial bool mi_heap_check_owned(IntPtr heap, void* p) => mi_heap_check_owned((mi_heap_t*)heap, p);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial bool mi_check_owned(void* p) => mi_heap_check_owned(mi_get_default_heap(), p);
 
         /* -----------------------------------------------------------
@@ -581,7 +600,7 @@ namespace TerraFX.Interop
             // walk through all blocks skipping the free ones
             nuint used_count = 0;
 
-            for (nuint  i = 0; i < page->capacity; i++)
+            for (nuint i = 0; i < page->capacity; i++)
             {
                 nuint bitidx = i / SizeOf<nuint>();
                 nuint bit = i - (bitidx * SizeOf<nuint>());
@@ -611,7 +630,7 @@ namespace TerraFX.Interop
         private static bool mi_heap_visit_areas_page(mi_heap_t* heap, mi_page_queue_t* pq, mi_page_t* page, void* vfun, void* arg)
         {
             GCHandle handle = GCHandle.FromIntPtr((IntPtr)vfun);
-            mi_heap_area_visit_fun fun =  (mi_heap_area_visit_fun)handle.Target!;
+            mi_heap_area_visit_fun fun = (mi_heap_area_visit_fun)handle.Target!;
 
             mi_heap_area_ex_t xarea;
             nuint bsize = mi_page_block_size(page);
@@ -691,6 +710,7 @@ namespace TerraFX.Interop
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial bool mi_heap_visit_blocks(IntPtr heap, bool visit_blocks, mi_block_visit_fun visitor, void* arg) => mi_heap_visit_blocks((mi_heap_t*)heap, visit_blocks, visitor, arg);
     }
 }

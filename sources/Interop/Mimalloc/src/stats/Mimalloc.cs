@@ -14,6 +14,7 @@ namespace TerraFX.Interop
           Statistics operations
         ----------------------------------------------------------- */
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool mi_is_in_main([NativeTypeName("void*")] ref byte stat)
         {
             ref byte _mi_stats_main_start = ref Unsafe.As<mi_stats_t, byte>(ref _mi_stats_main);
@@ -21,8 +22,10 @@ namespace TerraFX.Interop
             return (Unsafe.IsAddressGreaterThan(ref stat, ref _mi_stats_main_start) || Unsafe.AreSame(ref stat, ref _mi_stats_main_start)) && Unsafe.IsAddressLessThan(ref stat, ref _mi_stats_main_end);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool mi_is_in_main([NativeTypeName("void*")] ref mi_stat_count_t stat) => mi_is_in_main(ref Unsafe.As<mi_stat_count_t, byte>(ref stat));
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool mi_is_in_main([NativeTypeName("void*")] ref mi_stat_counter_t stat) => mi_is_in_main(ref Unsafe.As<mi_stat_counter_t, byte>(ref stat));
 
         private static void mi_stat_update([NativeTypeName("mi_stat_count_t*")] ref mi_stat_count_t stat, [NativeTypeName("int64_t")] long amount)
@@ -83,8 +86,10 @@ namespace TerraFX.Interop
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static partial void _mi_stat_increase(ref mi_stat_count_t stat, nuint amount) => mi_stat_update(ref stat, (long)amount);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static partial void _mi_stat_decrease(ref mi_stat_count_t stat, nuint amount) => mi_stat_update(ref stat, -(long)amount);
 
         // must be thread safe as it is called from stats_merge
@@ -219,6 +224,7 @@ namespace TerraFX.Interop
             _mi_fprintf(@out, arg, string.IsNullOrEmpty(fmt) ? "{0,-11}" : fmt, buf);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void mi_print_amount([NativeTypeName("int64_t")] long n, [NativeTypeName("int64_t")] long unit, [NativeTypeName("mi_output_fun*")] mi_output_fun? @out, void* arg) => mi_printf_amount(n, unit, @out, arg, "");
 
         private static void mi_print_count([NativeTypeName("int64_t")] long n, [NativeTypeName("int64_t")] long unit, [NativeTypeName("mi_output_fun*")] mi_output_fun? @out, void* arg)
@@ -305,6 +311,7 @@ namespace TerraFX.Interop
             _mi_fprintf(@out, arg, "{0,-10}: {1,-5}.{2} avg\n", msg, avg_whole, avg_frac1);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void mi_print_header([NativeTypeName("mi_output_fun*")] mi_output_fun? @out, void* arg) => _mi_fprintf(@out, arg, "\n{0,-10}: {1,-10} {2,-10} {3,-10} {4,-10} {5,-10}\n", "heap stats", "peak  ", "total  ", "freed  ", "unit  ", "count  ");
 
         private static void mi_stats_print_bins(ref mi_stat_count_t all, [NativeTypeName("const mi_stat_count_t*")] in mi_stat_count_t bins, [NativeTypeName("size_t")] nuint max, [NativeTypeName("const char*")] string fmt, [NativeTypeName("mi_output_fun*")] mi_output_fun? @out, void* arg)
@@ -402,6 +409,7 @@ namespace TerraFX.Interop
             _mi_fprintf(out0, arg0, "\n");
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [return: NativeTypeName("mi_stats_t*")]
         private static ref mi_stats_t mi_stats_get_default()
         {
@@ -430,9 +438,11 @@ namespace TerraFX.Interop
             _mi_stats_main = default;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial void mi_stats_merge() => mi_stats_merge_from(ref mi_stats_get_default());
 
         // called from `mi_thread_done`
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static partial void _mi_stats_done(ref mi_stats_t stats) => mi_stats_merge_from(ref stats);
 
         public static partial void mi_stats_print_out(mi_output_fun? @out, void* arg)
@@ -442,8 +452,10 @@ namespace TerraFX.Interop
         }
 
         // for compatibility there is an `out` parameter (which can be `stdout` or `stderr`)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial void mi_stats_print(mi_output_fun? @out) => mi_stats_print_out(@out, null);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial void mi_thread_stats_print_out(mi_output_fun? @out, void* arg) => _mi_stats_print(mi_stats_get_default(), @out, arg);
 
         // ----------------------------------------------------------------
@@ -453,17 +465,21 @@ namespace TerraFX.Interop
         // The following members have not been ported as they aren't needed for .NET:
         //  * LARGE_INTEGER mfreq
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [return: NativeTypeName("mi_msecs_t")]
         private static long mi_to_msecs(long t) => t / Stopwatch.Frequency;
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static partial long _mi_clock_now()
         {
             long t = Stopwatch.GetTimestamp();
             return mi_to_msecs(t);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static partial long _mi_clock_start() => _mi_clock_now();
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static partial long _mi_clock_end(long start)
         {
             long end = _mi_clock_now();
@@ -486,6 +502,7 @@ namespace TerraFX.Interop
             return msecs;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [return: NativeTypeName("mi_msecs_t")]
         private static long timeval_secs([NativeTypeName("const struct timeval*")] in timeval tv) => ((long)tv.tv_sec * 1000) + ((long)tv.tv_usec / 1000);
 
@@ -524,7 +541,7 @@ namespace TerraFX.Interop
 
                 // estimate commit using our stats
 
-                peak_commit    = (nuint)mi_atomic_loadi64_relaxed(ref _mi_stats_main.committed.peak);
+                peak_commit = (nuint)mi_atomic_loadi64_relaxed(ref _mi_stats_main.committed.peak);
                 current_commit = (nuint)mi_atomic_loadi64_relaxed(ref _mi_stats_main.committed.current);
 
                 // estimate

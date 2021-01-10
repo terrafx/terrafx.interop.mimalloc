@@ -91,6 +91,7 @@ namespace TerraFX.Interop
         [return: NativeTypeName("intptr_t")]
         private static partial nint mi_atomic_subi([NativeTypeName("std::atomic<intptr_t>")] ref nint p, [NativeTypeName("intptr_t")] nint sub);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [return: NativeTypeName("uintptr_t")]
         private static nuint mi_atomic_fetch_add_explicit([NativeTypeName("std::atomic<uintptr_t>*")] ref nuint p, [NativeTypeName("uintptr_t")] nuint add, mi_memory_order_t mo)
         {
@@ -108,10 +109,12 @@ namespace TerraFX.Interop
             return value;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [return: NativeTypeName("uintptr_t")]
         private static nuint mi_atomic_fetch_sub_explicit([NativeTypeName("std::atomic<uintptr_t>*")] ref nuint p, [NativeTypeName("uintptr_t")] nuint sub, mi_memory_order_t mo)
             => mi_atomic_fetch_add_explicit(ref p, (nuint)(-(nint)sub), mo);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [return: NativeTypeName("uintptr_t")]
         private static nuint mi_atomic_fetch_and_explicit([NativeTypeName("std::atomic<uintptr_t>*")] ref nuint p, [NativeTypeName("uintptr_t")] nuint x, mi_memory_order_t mo)
         {
@@ -125,6 +128,7 @@ namespace TerraFX.Interop
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [return: NativeTypeName("uintptr_t")]
         private static nuint mi_atomic_fetch_or_explicit([NativeTypeName("std::atomic<uintptr_t>*")] ref nuint p, [NativeTypeName("uintptr_t")] nuint x, mi_memory_order_t mo)
         {
@@ -138,6 +142,7 @@ namespace TerraFX.Interop
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool mi_atomic_compare_exchange_strong_explicit([NativeTypeName("std::atomic<uintptr_t>*")] ref nuint p, [NativeTypeName("uintptr_t*")] ref nuint expected, [NativeTypeName("uintptr_t")] nuint desired, mi_memory_order_t mo1, mi_memory_order_t mo2)
         {
             nuint read;
@@ -162,9 +167,11 @@ namespace TerraFX.Interop
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool mi_atomic_compare_exchange_weak_explicit([NativeTypeName("std::atomic<uintptr_t>*")] ref nuint p, [NativeTypeName("uintptr_t*")] ref nuint expected, [NativeTypeName("uintptr_t")] nuint desired, mi_memory_order_t mo1, mi_memory_order_t mo2)
             => mi_atomic_compare_exchange_strong_explicit(ref p, ref expected, desired, mo1, mo2);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [return: NativeTypeName("uintptr_t")]
         private static nuint mi_atomic_exchange_explicit([NativeTypeName("std::atomic<uintptr_t>*")] ref nuint p, [NativeTypeName("uintptr_t")] nuint exchange, mi_memory_order_t mo)
         {
@@ -178,12 +185,14 @@ namespace TerraFX.Interop
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void mi_atomic_thread_fence(mi_memory_order_t mo)
         {
             nuint x = 0;
             mi_atomic_exchange_explicit(ref x, 1, mo);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [return: NativeTypeName("uintptr_t")]
         private static nuint mi_atomic_load_explicit([NativeTypeName("std::atomic<uintptr_t> const*")] ref nuint p, mi_memory_order_t mo)
         {
@@ -192,6 +201,11 @@ namespace TerraFX.Interop
                 return p;
             }
             else
+            {
+                return SoftwareFallback(ref p, mo);
+            }
+
+            static nuint SoftwareFallback(ref nuint p, mi_memory_order_t mo)
             {
                 nuint x = p;
 
@@ -207,6 +221,7 @@ namespace TerraFX.Interop
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void mi_atomic_store_explicit([NativeTypeName("std::atomic<uintptr_t>*")] ref nuint p, [NativeTypeName("uintptr_t")] nuint x, mi_memory_order_t mo)
         {
             if (X86Base.IsSupported)
@@ -219,6 +234,7 @@ namespace TerraFX.Interop
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [return: NativeTypeName("int64_t")]
         private static long mi_atomic_loadi64_explicit([NativeTypeName("std::atomic<int64_t>*")] ref long p, mi_memory_order_t mo)
         {
@@ -227,6 +243,11 @@ namespace TerraFX.Interop
                 return p;
             }
             else
+            {
+                return SoftwareFallback(ref p, mo);
+            }
+
+            static long SoftwareFallback(ref long p, mi_memory_order_t mo)
             {
                 long old = p;
                 long x = old;
@@ -240,6 +261,7 @@ namespace TerraFX.Interop
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void mi_atomic_storei64_explicit([NativeTypeName("std::atomic<int64_t>*")] ref long p, [NativeTypeName("int64_t")] long x, mi_memory_order_t mo)
         {
             if (X86Base.IsSupported)
@@ -253,6 +275,7 @@ namespace TerraFX.Interop
         }
 
         // These are used by the statistics
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [return: NativeTypeName("int64_t")]
         private static long mi_atomic_addi64_relaxed([NativeTypeName("volatile std::atomic<int64_t>*")] ref long p, [NativeTypeName("int64_t")] long add)
         {
@@ -261,6 +284,11 @@ namespace TerraFX.Interop
                 return mi_atomic_addi(ref Unsafe.As<long, nint>(ref p), (nint)add);
             }
             else
+            {
+                return SoftwareFallback(ref p, add);
+            }
+
+            static long SoftwareFallback(ref long p, long add)
             {
                 long current, sum;
 
@@ -348,12 +376,15 @@ namespace TerraFX.Interop
         private static void mi_atomic_storei64_relaxed(ref long p, long x) => mi_atomic_storei64_explicit(ref p, x, mi_memory_order_relaxed);
 
         // Atomically add a signed value; returns the previous value.
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static partial nint mi_atomic_addi(ref nint p, nint add) => unchecked((nint)mi_atomic_add_acq_rel(ref Unsafe.As<nint, nuint>(ref p), (nuint)add));
 
         // Atomically subtract a signed value; returns the previous value.
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static partial nint mi_atomic_subi(ref nint p, nint sub) => mi_atomic_addi(ref p, -sub);
 
-        // Yield 
+        // Yield
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static partial void mi_atomic_yield() => Thread.Yield();
     }
 }

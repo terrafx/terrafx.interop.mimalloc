@@ -111,8 +111,10 @@ namespace TerraFX.Interop
             return p;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial void* mi_heap_malloc_small(IntPtr heap, nuint size) => mi_heap_malloc_small((mi_heap_t*)heap, size);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial void* mi_malloc_small(nuint size) => mi_heap_malloc_small(mi_get_default_heap(), size);
 
         // The main allocation function
@@ -142,8 +144,10 @@ namespace TerraFX.Interop
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial void* mi_heap_malloc(IntPtr heap, nuint size) => mi_heap_malloc((mi_heap_t*)heap, size);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial void* mi_malloc(nuint size) => mi_heap_malloc(mi_get_default_heap(), size);
 
         private static partial void _mi_block_zero_init(mi_page_t* page, void* p, nuint size)
@@ -198,10 +202,13 @@ namespace TerraFX.Interop
             return p;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void* mi_heap_zalloc(mi_heap_t* heap, [NativeTypeName("size_t")] nuint size) => _mi_heap_malloc_zero(heap, size, true);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial void* mi_heap_zalloc(IntPtr heap, nuint size) => mi_heap_zalloc((mi_heap_t*)heap, size);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial void* mi_zalloc(nuint size) => mi_heap_zalloc(mi_get_default_heap(), size);
 
         // ------------------------------------------------------
@@ -670,30 +677,35 @@ namespace TerraFX.Interop
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial nuint mi_usable_size(void* p) => _mi_usable_size(p, "mi_usable_size");
 
         // ------------------------------------------------------
         // Allocation extensions
         // ------------------------------------------------------
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial void mi_free_size(void* p, nuint size)
         {
             mi_assert((MI_DEBUG != 0) && ((p == null) || (size <= _mi_usable_size(p, "mi_free_size"))));
             mi_free(p);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial void mi_free_size_aligned(void* p, nuint size, nuint alignment)
         {
             mi_assert((MI_DEBUG != 0) && (((nuint)p % alignment) == 0));
             mi_free_size(p, size);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial void mi_free_aligned(void* p, nuint alignment)
         {
             mi_assert((MI_DEBUG != 0) && (((nuint)p % alignment) == 0));
             mi_free(p);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void* mi_heap_calloc(mi_heap_t* heap, [NativeTypeName("size_t")] nuint count, [NativeTypeName("size_t")] nuint size)
         {
             if (mi_count_size_overflow(count, size, out nuint total))
@@ -703,11 +715,14 @@ namespace TerraFX.Interop
             return mi_heap_zalloc(heap, total);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial void* mi_heap_calloc(IntPtr heap, nuint count, nuint size) => mi_heap_calloc((mi_heap_t*)heap, count, size);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial void* mi_calloc(nuint count, nuint size) => mi_heap_calloc(mi_get_default_heap(), count, size);
 
         // Uninitialized `calloc`
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void* mi_heap_mallocn(mi_heap_t* heap, [NativeTypeName("size_t")] nuint count, [NativeTypeName("size_t")] nuint size)
         {
             if (mi_count_size_overflow(count, size, out nuint total))
@@ -717,9 +732,43 @@ namespace TerraFX.Interop
             return mi_heap_malloc(heap, total);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static void* mi_heap_mallocn_aligned(mi_heap_t* heap, [NativeTypeName("size_t")] nuint count, [NativeTypeName("size_t")] nuint size, [NativeTypeName("size_t")] nuint alignment)
+        {
+            if (mi_count_size_overflow(count, size, out nuint total))
+            {
+                return null;
+            }
+            return mi_heap_malloc_aligned(heap, total, alignment);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static void* mi_heap_mallocn_aligned_at(mi_heap_t* heap, [NativeTypeName("size_t")] nuint count, [NativeTypeName("size_t")] nuint size, [NativeTypeName("size_t")] nuint alignment, [NativeTypeName("size_t")] nuint offset)
+        {
+            if (mi_count_size_overflow(count, size, out nuint total))
+            {
+                return null;
+            }
+            return mi_heap_malloc_aligned_at(heap, total, alignment, offset);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial void* mi_heap_mallocn(IntPtr heap, nuint count, nuint size) => mi_heap_mallocn((mi_heap_t*)heap, count, size);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static partial void* mi_heap_mallocn_aligned(IntPtr heap, nuint count, nuint size, nuint alignment) => mi_heap_mallocn_aligned((mi_heap_t*)heap, count, size, alignment);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static partial void* mi_heap_mallocn_aligned_at(IntPtr heap, nuint count, nuint size, nuint alignment, nuint offset) => mi_heap_mallocn_aligned_at((mi_heap_t*)heap, count, size, alignment, offset);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial void* mi_mallocn(nuint count, nuint size) => mi_heap_mallocn(mi_get_default_heap(), count, size);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static partial void* mi_mallocn_aligned(nuint count, nuint size, nuint alignment) => mi_heap_mallocn_aligned(mi_get_default_heap(), count, size, alignment);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static partial void* mi_mallocn_aligned_at(nuint count, nuint size, nuint alignment, nuint offset) => mi_heap_mallocn_aligned_at(mi_get_default_heap(), count, size, alignment, offset);
 
         // Expand in place or fail
         public static partial void* mi_expand(void* p, nuint newsize)
@@ -775,10 +824,13 @@ namespace TerraFX.Interop
             return newp;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void* mi_heap_realloc(mi_heap_t* heap, void* p, [NativeTypeName("size_t")] nuint newsize) => _mi_heap_realloc_zero(heap, p, newsize, false);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial void* mi_heap_realloc(IntPtr heap, void* p, nuint newsize) => mi_heap_realloc((mi_heap_t*)heap, p, newsize);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void* mi_heap_reallocn(mi_heap_t* heap, void* p, [NativeTypeName("size_t")] nuint count, [NativeTypeName("size_t")] nuint size)
         {
             if (mi_count_size_overflow(count, size, out nuint total))
@@ -788,6 +840,7 @@ namespace TerraFX.Interop
             return mi_heap_realloc(heap, p, total);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial void* mi_heap_reallocn(IntPtr heap, void* p, nuint count, nuint size) => mi_heap_reallocn((mi_heap_t*)heap, p, count, size);
 
         // Reallocate but free `p` on errors
@@ -803,12 +856,16 @@ namespace TerraFX.Interop
             return newp;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial void* mi_heap_reallocf(IntPtr heap, void* p, nuint newsize) => mi_heap_reallocf((mi_heap_t*)heap, p, newsize);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void* mi_heap_rezalloc(mi_heap_t* heap, void* p, [NativeTypeName("size_t")] nuint newsize) => _mi_heap_realloc_zero(heap, p, newsize, true);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial void* mi_heap_rezalloc(IntPtr heap, void* p, nuint newsize) => mi_heap_rezalloc((mi_heap_t*)heap, p, newsize);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void* mi_heap_recalloc(mi_heap_t* heap, void* p, [NativeTypeName("size_t")] nuint count, [NativeTypeName("size_t")] nuint size)
         {
             if (mi_count_size_overflow(count, size, out nuint total))
@@ -818,17 +875,23 @@ namespace TerraFX.Interop
             return mi_heap_rezalloc(heap, p, total);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial void* mi_heap_recalloc(IntPtr heap, void* p, nuint count, nuint size) => mi_heap_recalloc((mi_heap_t*)heap, p, count, size);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial void* mi_realloc(void* p, nuint newsize) => mi_heap_realloc(mi_get_default_heap(), p, newsize);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial void* mi_reallocn(void* p, nuint count, nuint size) => mi_heap_reallocn(mi_get_default_heap(), p, count, size);
 
         // Reallocate but free `p` on errors
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial void* mi_reallocf(void* p, nuint newsize) => mi_heap_reallocf(mi_get_default_heap(), p, newsize);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial void* mi_rezalloc(void* p, nuint newsize) => mi_heap_rezalloc(mi_get_default_heap(), p, newsize);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial void* mi_recalloc(void* p, nuint count, nuint size) => mi_heap_recalloc(mi_get_default_heap(), p, count, size);
 
         // ------------------------------------------------------
@@ -854,8 +917,10 @@ namespace TerraFX.Interop
             return t;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial sbyte* mi_heap_strdup(IntPtr heap, sbyte* s) => mi_heap_strdup((mi_heap_t*)heap, s);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial sbyte* mi_strdup(sbyte* s) => mi_heap_strdup(mi_get_default_heap(), s);
 
         // `strndup` using mi_malloc
@@ -887,10 +952,13 @@ namespace TerraFX.Interop
             return t;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial sbyte* mi_heap_strndup(IntPtr heap, sbyte* s, nuint n) => mi_heap_strndup((mi_heap_t*)heap, s, n);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial sbyte* mi_strndup(sbyte* s, nuint n) => mi_heap_strndup(mi_get_default_heap(), s, n);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [return: NativeTypeName("size_t")]
         private static nuint mi_path_max()
         {
@@ -950,8 +1018,10 @@ namespace TerraFX.Interop
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial sbyte* mi_heap_realpath(IntPtr heap, sbyte* fname, sbyte* resolved_name) => mi_heap_realpath((mi_heap_t*)heap, fname, resolved_name);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial sbyte* mi_realpath(sbyte* fname, sbyte* resolved_name) => mi_heap_realpath(mi_get_default_heap(), fname, resolved_name);
 
         /*-------------------------------------------------------

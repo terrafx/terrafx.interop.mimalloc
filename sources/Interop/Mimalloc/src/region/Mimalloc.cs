@@ -65,6 +65,7 @@ namespace TerraFX.Interop
         -----------------------------------------------------------------------------*/
 
         // Blocks (of 4MiB) needed for the given size.
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [return: NativeTypeName("size_t")]
         private static nuint mi_region_block_count([NativeTypeName("size_t")] nuint size) => _mi_divide_up(size, MI_SEGMENT_SIZE);
 
@@ -104,6 +105,7 @@ namespace TerraFX.Interop
 #pragma warning restore CS0420
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void* mi_region_blocks_start([NativeTypeName("const mem_region_t*")] mem_region_t* region, [NativeTypeName("mi_bitmap_index_t")] nuint bit_idx)
         {
 #pragma warning disable CS0420
@@ -113,6 +115,7 @@ namespace TerraFX.Interop
 #pragma warning restore CS0420
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [return: NativeTypeName("size_t")]
         private static nuint mi_memid_create(mem_region_t* region, [NativeTypeName("mi_bitmap_index_t")] nuint bit_idx)
         {
@@ -123,6 +126,7 @@ namespace TerraFX.Interop
             return ((idx * MI_BITMAP_FIELD_BITS) + bit_idx) << 1;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [return: NativeTypeName("size_t")]
         private static nuint mi_memid_create_from_arena([NativeTypeName("size_t")] nuint arena_memid) => (arena_memid << 1) | 1;
 
@@ -531,7 +535,7 @@ namespace TerraFX.Interop
                 if ((blocks_start != p) || ((bit_idx + blocks) > MI_BITMAP_FIELD_BITS))
                 {
                     // or `abort`?
-                    return; 
+                    return;
                 }
 
                 // committed?
@@ -621,16 +625,22 @@ namespace TerraFX.Interop
           Other
         -----------------------------------------------------------------------------*/
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static partial bool _mi_mem_reset(void* p, nuint size, mi_os_tld_t* tld) => _mi_os_reset(p, size, ref *tld->stats);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static partial bool _mi_mem_unreset(void* p, nuint size, out bool is_zero, mi_os_tld_t* tld) => _mi_os_unreset(p, size, out is_zero, ref *tld->stats);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static partial bool _mi_mem_commit(void* p, nuint size, out bool is_zero, mi_os_tld_t* tld) => _mi_os_commit(p, size, out is_zero, ref *tld->stats);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool _mi_mem_decommit(void* p, [NativeTypeName("size_t")] nuint size, mi_os_tld_t* tld) => _mi_os_decommit(p, size, ref *tld->stats);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static partial bool _mi_mem_protect(void* p, nuint size) => _mi_os_protect(p, size);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static partial bool _mi_mem_unprotect(void* p, nuint size) => _mi_os_unprotect(p, size);
     }
 }

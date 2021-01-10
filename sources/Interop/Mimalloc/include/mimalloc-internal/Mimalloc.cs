@@ -239,9 +239,11 @@ namespace TerraFX.Interop
         ----------------------------------------------------------- */
 
         // Is `x` a power of two? (0 is considered a power of two)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool _mi_is_power_of_two([NativeTypeName("uintptr_t")] nuint x) => (x & (x - 1)) == 0;
 
         // Align upwards
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [return: NativeTypeName("uintptr_t")]
         private static nuint _mi_align_up([NativeTypeName("uintptr_t")] nuint sz, [NativeTypeName("size_t")] nuint alignment)
         {
@@ -259,6 +261,7 @@ namespace TerraFX.Interop
         }
 
         // Divide upwards: `s <= _mi_divide_up(s,d)*d < s+d`.
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [return: NativeTypeName("uintptr_t")]
         private static nuint _mi_divide_up([NativeTypeName("uintptr_t")] nuint size, [NativeTypeName("size_t")] nuint divider)
         {
@@ -282,6 +285,7 @@ namespace TerraFX.Interop
 
         // Align a byte size to a size in _machine words_,
         // i.e. byte size == `wsize*sizeof(void*)`.
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [return: NativeTypeName("size_t")]
         private static nuint _mi_wsize_from_size([NativeTypeName("size_t")] nuint size)
         {
@@ -290,10 +294,12 @@ namespace TerraFX.Interop
         }
 
         // Does malloc satisfy the alignment constraints already?
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool mi_malloc_satisfies_alignment([NativeTypeName("size_t")] nuint alignment, [NativeTypeName("size_t")] nuint size)
             => (alignment == SizeOf<nuint>()) || ((alignment == MI_MAX_ALIGN_SIZE) && (size > (MI_MAX_ALIGN_SIZE / 2)));
 
         // Overflow detecting multiply
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool mi_mul_overflow([NativeTypeName("size_t")] nuint count, [NativeTypeName("size_t")] nuint size, [NativeTypeName("size_t*")] out nuint total)
         {
             total = count * size;
@@ -328,15 +334,19 @@ namespace TerraFX.Interop
         // statically allocated main backing heap
         private static partial mi_heap_t* _mi_heap_main_get();
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static mi_heap_t* mi_get_default_heap() => _mi_heap_default;
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool mi_heap_is_default([NativeTypeName("const mi_heap_t")] mi_heap_t* heap) => heap == mi_get_default_heap();
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool mi_heap_is_backing([NativeTypeName("const mi_heap_t")] mi_heap_t* heap) => heap->tld->heap_backing == heap;
 
         // The following members have not been ported as they aren't needed for .NET:
         //  * bool mi_heap_is_initialized(mi_heap_t*)
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [return: NativeTypeName("uintptr_t")]
         private static nuint _mi_ptr_cookie([NativeTypeName("const void*")] void* p)
         {
@@ -348,6 +358,7 @@ namespace TerraFX.Interop
           Pages
         ----------------------------------------------------------- */
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static mi_page_t* _mi_heap_get_free_small_page(mi_heap_t* heap, [NativeTypeName("size_t")] nuint size)
         {
             mi_assert_internal((MI_DEBUG > 1) && (size <= (MI_SMALL_SIZE_MAX + MI_PADDING_SIZE)));
@@ -358,12 +369,15 @@ namespace TerraFX.Interop
         }
 
         // Get the page belonging to a certain size class
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static mi_page_t* _mi_get_free_small_page([NativeTypeName("size_t")] nuint size) => _mi_heap_get_free_small_page(mi_get_default_heap(), size);
 
         // Segment that contains the pointer
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static mi_segment_t* _mi_ptr_segment([NativeTypeName("const void*")] void* p) => (mi_segment_t*)((nuint)p & ~MI_SEGMENT_MASK);
 
         // Segment belonging to a page
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static mi_segment_t* _mi_page_segment([NativeTypeName("const mi_page_t*")] mi_page_t* page)
         {
             mi_segment_t* segment = _mi_ptr_segment(page);
@@ -372,6 +386,7 @@ namespace TerraFX.Interop
         }
 
         // used internally
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [return: NativeTypeName("uintptr_t")]
         private static nuint _mi_segment_page_idx_of([NativeTypeName("const mi_segment_t*")] mi_segment_t* segment, [NativeTypeName("const void*")] void* p)
         {
@@ -387,6 +402,7 @@ namespace TerraFX.Interop
         }
 
         // Get the page containing the pointer
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static mi_page_t* _mi_segment_page_of([NativeTypeName("const mi_segment_t*")] mi_segment_t* segment, [NativeTypeName("const void*")] void* p)
         {
             nuint idx = _mi_segment_page_idx_of(segment, p);
@@ -394,6 +410,7 @@ namespace TerraFX.Interop
         }
 
         // Quick page start for initialized pages
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [return: NativeTypeName("uint8_t*")]
         private static byte* _mi_page_start([NativeTypeName("const mi_segment_t*")] mi_segment_t* segment, [NativeTypeName("const mi_page_t*")] mi_page_t* page, [NativeTypeName("size_t*")] out nuint page_size)
         {
@@ -403,6 +420,7 @@ namespace TerraFX.Interop
         }
 
         // Get the page containing the pointer
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static mi_page_t* _mi_ptr_page(void* p) => _mi_segment_page_of(_mi_ptr_segment(p), p);
 
         // Get the block size of a page (special cased for huge objects)
@@ -425,34 +443,33 @@ namespace TerraFX.Interop
 
         // Get the usable block size of a page without fixed padding.
         // This may still include internal padding due to alignment and rounding up size classes.
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [return: NativeTypeName("size_t")]
         private static nuint mi_page_usable_block_size([NativeTypeName("const mi_page_t*")] mi_page_t* page) => mi_page_block_size(page) - MI_PADDING_SIZE;
 
         // Thread free access
 
+#pragma warning disable CS0420
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static mi_block_t* mi_page_thread_free([NativeTypeName("const mi_page_t*")] mi_page_t* page)
-        {
-#pragma warning disable CS0420
-            return (mi_block_t*)(mi_atomic_load_relaxed(ref page->xthread_free) & ~(nuint)3);
+           => (mi_block_t*)(mi_atomic_load_relaxed(ref page->xthread_free) & ~(nuint)3);
 #pragma warning restore CS0420
-        }
 
-        private static mi_delayed_t mi_page_thread_free_flag([NativeTypeName("const mi_page_t*")] mi_page_t* page)
-        {
 #pragma warning disable CS0420
-            return (mi_delayed_t)(mi_atomic_load_relaxed(ref page->xthread_free) & 3);
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static mi_delayed_t mi_page_thread_free_flag([NativeTypeName("const mi_page_t*")] mi_page_t* page)
+            => (mi_delayed_t)(mi_atomic_load_relaxed(ref page->xthread_free) & 3);
 #pragma warning restore CS0420
-        }
 
         // Heap access
 
-        private static mi_heap_t* mi_page_heap([NativeTypeName("const mi_page_t*")] mi_page_t* page)
-        {
 #pragma warning disable CS0420
-            return (mi_heap_t*)mi_atomic_load_relaxed(ref page->xheap);
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static mi_heap_t* mi_page_heap([NativeTypeName("const mi_page_t*")] mi_page_t* page)
+            => (mi_heap_t*)mi_atomic_load_relaxed(ref page->xheap);
 #pragma warning restore CS0420
-        }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void mi_page_set_heap(mi_page_t* page, mi_heap_t* heap)
         {
 #pragma warning disable CS0420
@@ -463,21 +480,27 @@ namespace TerraFX.Interop
 
         // Thread free flag helpers
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static mi_block_t* mi_tf_block([NativeTypeName("mi_thread_free_t")] nuint tf) => (mi_block_t*)(tf & ~(nuint)0x03);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static mi_delayed_t mi_tf_delayed([NativeTypeName("mi_thread_free_t")] nuint tf) => (mi_delayed_t)(tf & 0x03);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [return: NativeTypeName("mi_thread_free_t")]
         private static nuint mi_tf_make(mi_block_t* block, mi_delayed_t delayed) => (nuint)block | (nuint)delayed;
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [return: NativeTypeName("mi_thread_free_t")]
         private static nuint mi_tf_set_delayed([NativeTypeName("mi_thread_free_t")] nuint tf, mi_delayed_t delayed) => mi_tf_make(mi_tf_block(tf), delayed);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [return: NativeTypeName("mi_thread_free_t")]
         private static nuint mi_tf_set_block([NativeTypeName("mi_thread_free_t")] nuint tf, mi_block_t* block) => mi_tf_make(block, mi_tf_delayed(tf));
 
         // are all blocks in a page freed?
         // note: needs up-to-date used count, (as the `xthread_free` list may not be empty). see `_mi_page_collect_free`.
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool mi_page_all_free([NativeTypeName("const mi_page_t*")] mi_page_t* page)
         {
             mi_assert_internal((MI_DEBUG > 1) && (page != null));
@@ -485,6 +508,7 @@ namespace TerraFX.Interop
         }
 
         // are there any available blocks?
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool mi_page_has_any_available([NativeTypeName("const mi_page_t*")] mi_page_t* page)
         {
             mi_assert_internal((MI_DEBUG > 1) && (page != null) && (page->reserved > 0));
@@ -492,6 +516,7 @@ namespace TerraFX.Interop
         }
 
         // are there immediately available blocks, i.e. blocks available on the free list.
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool mi_page_immediate_available([NativeTypeName("const mi_page_t*")] mi_page_t* page)
         {
             mi_assert_internal((MI_DEBUG > 1) && (page != null));
@@ -499,6 +524,7 @@ namespace TerraFX.Interop
         }
 
         // is more than 7/8th of a page in use?
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool mi_page_mostly_used([NativeTypeName("const mi_page_t*")] mi_page_t* page)
         {
             if (page == null)
@@ -510,18 +536,23 @@ namespace TerraFX.Interop
             return (page->reserved - page->used) <= frac;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static mi_page_queue_t* mi_page_queue([NativeTypeName("const mi_heap_t*")] mi_heap_t* heap, [NativeTypeName("size_t")] nuint size) => &heap->pages.e0 + _mi_bin(size);
 
         //-----------------------------------------------------------
         // Page flags
         //-----------------------------------------------------------
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool mi_page_is_in_full([NativeTypeName("const mi_page_t*")] mi_page_t* page) => page->flags.x.in_full;
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void mi_page_set_in_full(mi_page_t* page, bool in_full) => page->flags.x.in_full = in_full;
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool mi_page_has_aligned([NativeTypeName("const mi_page_t*")] mi_page_t* page) => page->flags.x.has_aligned;
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void mi_page_set_has_aligned(mi_page_t* page, bool has_aligned) => page->flags.x.has_aligned = has_aligned;
 
         /* -------------------------------------------------------------------
@@ -549,6 +580,7 @@ namespace TerraFX.Interop
         `(k2<<<k1)+k1` would appear (too) often as a sentinel value.
         ------------------------------------------------------------------- */
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool mi_is_in_same_segment([NativeTypeName("const void*")] void* p, [NativeTypeName("const void*")] void* q) => _mi_ptr_segment(p) == _mi_ptr_segment(q);
 
         private static bool mi_is_in_same_page([NativeTypeName("const void*")] void* p, [NativeTypeName("const void*")] void* q)
@@ -567,6 +599,7 @@ namespace TerraFX.Interop
             return idxp == idxq;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [return: NativeTypeName("uintptr_t")]
         private static nuint mi_rotl([NativeTypeName("uintptr_t")] nuint x, [NativeTypeName("uintptr_t")] nuint shift)
         {
@@ -582,6 +615,7 @@ namespace TerraFX.Interop
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [return: NativeTypeName("uintptr_t")]
         private static nuint mi_rotr([NativeTypeName("uintptr_t")] nuint x, [NativeTypeName("uintptr_t")] nuint shift)
         {
@@ -598,18 +632,21 @@ namespace TerraFX.Interop
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void* mi_ptr_decode([NativeTypeName("const void*")] void* @null, [NativeTypeName("const mi_encoded_t")] nuint x, [NativeTypeName("const uintptr_t*")] nuint* keys)
         {
             void* p = (void*)(mi_rotr(unchecked(x - keys[0]), keys[0]) ^ keys[1]);
             return mi_unlikely(p == @null) ? null : p;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static nuint mi_ptr_encode([NativeTypeName("const void*")] void* @null, [NativeTypeName("const void*")] void* p, [NativeTypeName("const uintptr_t*")] nuint* keys)
         {
             nuint x = (nuint)(mi_unlikely(p == null) ? @null : p);
             return unchecked(mi_rotl(x ^ keys[1], keys[0]) + keys[0]);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static mi_block_t* mi_block_nextx([NativeTypeName("const void*")] void* @null, [NativeTypeName("const mi_block_t*")] mi_block_t* block, [NativeTypeName("const uintptr_t*")] nuint* keys)
         {
             if (MI_ENCODE_FREELIST != 0)
@@ -622,6 +659,7 @@ namespace TerraFX.Interop
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void mi_block_set_nextx([NativeTypeName("const void*")] void* @null, mi_block_t* block, [NativeTypeName("const mi_block_t*")] mi_block_t* next, [NativeTypeName("const uintptr_t*")] nuint* keys)
         {
             if (MI_ENCODE_FREELIST != 0)
@@ -657,6 +695,7 @@ namespace TerraFX.Interop
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void mi_block_set_next([NativeTypeName("const mi_page_t*")] mi_page_t* page, mi_block_t* block, [NativeTypeName("const mi_block_t*")] mi_block_t* next)
         {
             if (MI_ENCODE_FREELIST != 0)
@@ -713,6 +752,7 @@ namespace TerraFX.Interop
         [return: NativeTypeName("size_t")]
         private static partial nuint _mi_os_numa_node_count_get();
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static int _mi_os_numa_node(mi_os_tld_t* tld)
         {
             if (mi_likely(_mi_numa_node_count == 1))
@@ -725,6 +765,7 @@ namespace TerraFX.Interop
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [return: NativeTypeName("size_t")]
         private static nuint _mi_os_numa_node_count()
         {
@@ -744,6 +785,7 @@ namespace TerraFX.Interop
         // -------------------------------------------------------------------
 
         // We use the .NET thread id rather than porting the native implementation
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static nuint _mi_thread_id() => (nuint)Thread.CurrentThread.ManagedThreadId;
     }
 }

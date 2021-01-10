@@ -4,6 +4,7 @@
 // The original code is Copyright © Microsoft. All rights reserved. Licensed under the MIT License (MIT).
 
 using System;
+using System.Runtime.CompilerServices;
 
 namespace TerraFX.Interop
 {
@@ -99,25 +100,33 @@ namespace TerraFX.Interop
             return aligned_p;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void* mi_heap_malloc_aligned_at(mi_heap_t* heap, [NativeTypeName("size_t")] nuint size, [NativeTypeName("size_t")] nuint alignment, [NativeTypeName("size_t")] nuint offset)
             => mi_heap_malloc_zero_aligned_at(heap, size, alignment, offset, false);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial void* mi_heap_malloc_aligned_at(IntPtr heap, nuint size, nuint alignment, nuint offset) => mi_heap_malloc_aligned_at((mi_heap_t*)heap, size, alignment, offset);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void* mi_heap_malloc_aligned(mi_heap_t* heap, [NativeTypeName("size_t")] nuint size, [NativeTypeName("size_t")] nuint alignment) => mi_heap_malloc_aligned_at(heap, size, alignment, 0);
 
         public static partial void* mi_heap_malloc_aligned(IntPtr heap, nuint size, nuint alignment) => mi_heap_malloc_aligned((mi_heap_t*)heap, size, alignment);
 
-        private static void * mi_heap_zalloc_aligned_at(mi_heap_t* heap, [NativeTypeName("size_t")] nuint size, [NativeTypeName("size_t")] nuint alignment, [NativeTypeName("size_t")] nuint offset)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static void* mi_heap_zalloc_aligned_at(mi_heap_t* heap, [NativeTypeName("size_t")] nuint size, [NativeTypeName("size_t")] nuint alignment, [NativeTypeName("size_t")] nuint offset)
             => mi_heap_malloc_zero_aligned_at(heap, size, alignment, offset, true);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial void* mi_heap_zalloc_aligned_at(IntPtr heap, nuint size, nuint alignment, nuint offset) => mi_heap_zalloc_aligned_at((mi_heap_t*)heap, size, alignment, offset);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void* mi_heap_zalloc_aligned(mi_heap_t* heap, [NativeTypeName("size_t")] nuint size, [NativeTypeName("size_t")] nuint alignment) => mi_heap_zalloc_aligned_at(heap, size, alignment, 0);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial void* mi_heap_zalloc_aligned(IntPtr heap, nuint size, nuint alignment) => mi_heap_zalloc_aligned((mi_heap_t*)heap, size, alignment);
 
-        private static void * mi_heap_calloc_aligned_at(mi_heap_t* heap, [NativeTypeName("size_t")] nuint count, [NativeTypeName("size_t")] nuint size, [NativeTypeName("size_t")] nuint alignment, [NativeTypeName("size_t")] nuint offset)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static void* mi_heap_calloc_aligned_at(mi_heap_t* heap, [NativeTypeName("size_t")] nuint count, [NativeTypeName("size_t")] nuint size, [NativeTypeName("size_t")] nuint alignment, [NativeTypeName("size_t")] nuint offset)
         {
             if (mi_count_size_overflow(count, size, out nuint total))
             {
@@ -126,22 +135,31 @@ namespace TerraFX.Interop
             return mi_heap_zalloc_aligned_at(heap, total, alignment, offset);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial void* mi_heap_calloc_aligned_at(IntPtr heap, nuint count, nuint size, nuint alignment, nuint offset) => mi_heap_calloc_aligned_at((mi_heap_t*)heap, count, size, alignment, offset);
 
-        private static void * mi_heap_calloc_aligned(mi_heap_t* heap, [NativeTypeName("size_t")] nuint count, [NativeTypeName("size_t")] nuint size, [NativeTypeName("size_t")] nuint alignment) => mi_heap_calloc_aligned_at(heap, count, size, alignment, 0);
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static void* mi_heap_calloc_aligned(mi_heap_t* heap, [NativeTypeName("size_t")] nuint count, [NativeTypeName("size_t")] nuint size, [NativeTypeName("size_t")] nuint alignment) => mi_heap_calloc_aligned_at(heap, count, size, alignment, 0);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial void* mi_heap_calloc_aligned(IntPtr heap, nuint count, nuint size, nuint alignment) => mi_heap_calloc_aligned((mi_heap_t*)heap, count, size, alignment);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial void* mi_malloc_aligned_at(nuint size, nuint alignment, nuint offset) => mi_heap_malloc_aligned_at(mi_get_default_heap(), size, alignment, offset);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial void* mi_malloc_aligned(nuint size, nuint alignment) => mi_heap_malloc_aligned(mi_get_default_heap(), size, alignment);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial void* mi_zalloc_aligned_at(nuint size, nuint alignment, nuint offset) => mi_heap_zalloc_aligned_at(mi_get_default_heap(), size, alignment, offset);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial void* mi_zalloc_aligned(nuint size, nuint alignment) => mi_heap_zalloc_aligned(mi_get_default_heap(), size, alignment);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial void* mi_calloc_aligned_at(nuint count, nuint size, nuint alignment, nuint offset) => mi_heap_calloc_aligned_at(mi_get_default_heap(), count, size, alignment, offset);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial void* mi_calloc_aligned(nuint count, nuint size, nuint alignment) => mi_heap_calloc_aligned(mi_get_default_heap(), count, size, alignment);
 
         private static void* mi_heap_realloc_zero_aligned_at(mi_heap_t* heap, void* p, [NativeTypeName("size_t")] nuint newsize, [NativeTypeName("size_t")] nuint alignment, [NativeTypeName("size_t")] nuint offset, bool zero)
@@ -213,24 +231,53 @@ namespace TerraFX.Interop
             return mi_heap_realloc_zero_aligned_at(heap, p, newsize, alignment, offset, zero);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void* mi_heap_realloc_aligned_at(mi_heap_t* heap, void* p, [NativeTypeName("size_t")] nuint newsize, [NativeTypeName("size_t")] nuint alignment, [NativeTypeName("size_t")] nuint offset)
             => mi_heap_realloc_zero_aligned_at(heap, p, newsize, alignment, offset, false);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial void* mi_heap_realloc_aligned_at(IntPtr heap, void* p, nuint newsize, nuint alignment, nuint offset) => mi_heap_realloc_aligned_at((mi_heap_t*)heap, p, newsize, alignment, offset);
 
-        private static void * mi_heap_realloc_aligned(mi_heap_t* heap, void* p, [NativeTypeName("size_t")] nuint newsize, [NativeTypeName("size_t")] nuint alignment) => mi_heap_realloc_zero_aligned(heap, p, newsize, alignment, false);
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static void* mi_heap_realloc_aligned(mi_heap_t* heap, void* p, [NativeTypeName("size_t")] nuint newsize, [NativeTypeName("size_t")] nuint alignment) => mi_heap_realloc_zero_aligned(heap, p, newsize, alignment, false);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial void* mi_heap_realloc_aligned(IntPtr heap, void* p, nuint newsize, nuint alignment) => mi_heap_realloc_aligned((mi_heap_t*)heap, p, newsize, alignment);
 
-        private static void * mi_heap_rezalloc_aligned_at(mi_heap_t* heap, void* p, [NativeTypeName("size_t")] nuint newsize, [NativeTypeName("size_t")] nuint alignment, [NativeTypeName("size_t")] nuint offset)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static void* mi_heap_reallocn_aligned_at(mi_heap_t* heap, void* p, [NativeTypeName("size_t")] nuint count, [NativeTypeName("size_t")] nuint size, [NativeTypeName("size_t")] nuint alignment, [NativeTypeName("size_t")] nuint offset)
+        {
+            if (mi_count_size_overflow(count, size, out nuint total))
+            {
+                return null;
+            }
+            return mi_heap_realloc_aligned_at(heap, p, total, alignment, offset);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static partial void* mi_heap_reallocn_aligned_at(IntPtr heap, void* p, nuint count, nuint size, nuint alignment, nuint offset) => mi_heap_reallocn_aligned_at((mi_heap_t*)heap, p, count, size, alignment, offset);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static void* mi_heap_reallocn_aligned(mi_heap_t* heap, void* p, [NativeTypeName("size_t")] nuint count, [NativeTypeName("size_t")] nuint size, [NativeTypeName("size_t")] nuint alignment)
+            => mi_heap_reallocn_aligned_at(heap, p, count, size, alignment, 0);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static partial void* mi_heap_reallocn_aligned(IntPtr heap, void* p, nuint count, nuint size, nuint alignment) => mi_heap_reallocn_aligned((mi_heap_t*)heap, p, count, size, alignment);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static void* mi_heap_rezalloc_aligned_at(mi_heap_t* heap, void* p, [NativeTypeName("size_t")] nuint newsize, [NativeTypeName("size_t")] nuint alignment, [NativeTypeName("size_t")] nuint offset)
             => mi_heap_realloc_zero_aligned_at(heap, p, newsize, alignment, offset, true);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial void* mi_heap_rezalloc_aligned_at(IntPtr heap, void* p, nuint newsize, nuint alignment, nuint offset) => mi_heap_rezalloc_aligned_at((mi_heap_t*)heap, p, newsize, alignment, offset);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void* mi_heap_rezalloc_aligned(mi_heap_t* heap, void* p, [NativeTypeName("size_t")] nuint newsize, [NativeTypeName("size_t")] nuint alignment) => mi_heap_realloc_zero_aligned(heap, p, newsize, alignment, true);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial void* mi_heap_rezalloc_aligned(IntPtr heap, void* p, nuint newsize, nuint alignment) => mi_heap_rezalloc_aligned((mi_heap_t*)heap, p, newsize, alignment);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void* mi_heap_recalloc_aligned_at(mi_heap_t* heap, void* p, [NativeTypeName("size_t")] nuint newcount, [NativeTypeName("size_t")] nuint size, [NativeTypeName("size_t")] nuint alignment, [NativeTypeName("size_t")] nuint offset)
         {
             if (mi_count_size_overflow(newcount, size, out nuint total))
@@ -240,29 +287,38 @@ namespace TerraFX.Interop
             return mi_heap_rezalloc_aligned_at(heap, p, total, alignment, offset);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial void* mi_heap_recalloc_aligned_at(IntPtr heap, void* p, nuint newcount, nuint size, nuint alignment, nuint offset) => mi_heap_recalloc_aligned_at((mi_heap_t*)heap, p, newcount, size, alignment, offset);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void* mi_heap_recalloc_aligned(mi_heap_t* heap, void* p, [NativeTypeName("size_t")] nuint newcount, [NativeTypeName("size_t")] nuint size, [NativeTypeName("size_t")] nuint alignment)
-        {
-            if (mi_count_size_overflow(newcount, size, out nuint total))
-            {
-                return null;
-            }
-            return mi_heap_rezalloc_aligned(heap, p, total, alignment);
-        }
+            => mi_heap_recalloc_aligned_at(heap, p, newcount, size, alignment, 0);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial void* mi_heap_recalloc_aligned(IntPtr heap, void* p, nuint newcount, nuint size, nuint alignment) => mi_heap_recalloc_aligned((mi_heap_t*)heap, p, newcount, size, alignment);
 
-        public static partial void * mi_realloc_aligned_at(void* p, nuint newsize, nuint alignment, nuint offset) => mi_heap_realloc_aligned_at(mi_get_default_heap(), p, newsize, alignment, offset);
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static partial void* mi_realloc_aligned_at(void* p, nuint newsize, nuint alignment, nuint offset) => mi_heap_realloc_aligned_at(mi_get_default_heap(), p, newsize, alignment, offset);
 
-        public static partial void* mi_realloc_aligned(void* p, nuint newsize,  nuint alignment) => mi_heap_realloc_aligned(mi_get_default_heap(), p, newsize, alignment);
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static partial void* mi_realloc_aligned(void* p, nuint newsize, nuint alignment) => mi_heap_realloc_aligned(mi_get_default_heap(), p, newsize, alignment);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static partial void* mi_reallocn_aligned_at(void* p, nuint count, nuint size, nuint alignment, nuint offset) => mi_heap_reallocn_aligned_at(mi_get_default_heap(), p, count, size, alignment, offset);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static partial void* mi_reallocn_aligned(void* p, nuint count, nuint size, nuint alignment) => mi_heap_reallocn_aligned(mi_get_default_heap(), p, count, size, alignment);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial void* mi_rezalloc_aligned_at(void* p, nuint newsize, nuint alignment, nuint offset) => mi_heap_rezalloc_aligned_at(mi_get_default_heap(), p, newsize, alignment, offset);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial void* mi_rezalloc_aligned(void* p, nuint newsize, nuint alignment) => mi_heap_rezalloc_aligned(mi_get_default_heap(), p, newsize, alignment);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial void* mi_recalloc_aligned_at(void* p, nuint newcount, nuint size, nuint alignment, nuint offset) => mi_heap_recalloc_aligned_at(mi_get_default_heap(), p, newcount, size, alignment, offset);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial void* mi_recalloc_aligned(void* p, nuint newcount, nuint size, nuint alignment) => mi_heap_recalloc_aligned(mi_get_default_heap(), p, newcount, size, alignment);
     }
 }

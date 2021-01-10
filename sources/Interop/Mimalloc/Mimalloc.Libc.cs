@@ -1,5 +1,6 @@
 // Copyright © Tanner Gooding and Contributors. Licensed under the MIT License (MIT). See License.md in the repository root for more information.
 
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace TerraFX.Interop
@@ -29,7 +30,8 @@ namespace TerraFX.Interop
         [DllImport("libc", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         private static extern void* memset(void* ptr, int value, [NativeTypeName("size_t")] nuint num);
 
-        private static nuint offsetof(void* type, void* member) => (nuint)((nuint)member - (nuint)type);
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static nuint offsetof(void* type, void* member) => (nuint)member - (nuint)type;
 
         [DllImport("libc", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         [return: NativeTypeName("size_t")]

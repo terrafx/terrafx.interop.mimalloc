@@ -4,18 +4,21 @@
 // The original code is Copyright © Microsoft. All rights reserved. Licensed under the MIT License (MIT).
 
 using System;
+using System.Runtime.CompilerServices;
 using static TerraFX.Interop.mi_option_t;
 
 namespace TerraFX.Interop
 {
     public static unsafe partial class Mimalloc
     {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static mi_page_t* MI_PAGE_EMPTY() => _mi_page_empty;
 
         // The following members have not been ported as they aren't needed for .NET:
         //  * bool _mi_process_is_initialized
         //  * void mi_heap_main_init()
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static partial mi_heap_t* _mi_heap_main_get()
         {
             mi_assert_internal((MI_DEBUG > 1) && (_mi_heap_main->cookie != 0));
@@ -98,6 +101,7 @@ namespace TerraFX.Interop
         //  * bool tls_initialized
         //  * void mi_process_setup_auto_thread_done()
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static partial bool _mi_is_main_thread()
         {
             mi_assert_internal((MI_DEBUG > 1) && (_mi_heap_main->thread_id != 0));
@@ -107,8 +111,10 @@ namespace TerraFX.Interop
         // The following members have not been ported as they aren't needed for .NET:
         //  * void mi_thread_init()
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial void mi_thread_done() => _mi_thread_done(mi_get_default_heap());
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static partial void _mi_thread_done(mi_heap_t* heap)
         {
             _mi_stat_decrease(ref _mi_stats_main.threads, 1);
@@ -117,6 +123,7 @@ namespace TerraFX.Interop
             _mi_heap_done(heap);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static partial void _mi_heap_set_default_direct(mi_heap_t* heap)
         {
             mi_assert_internal((MI_DEBUG > 1) && (heap != null));
@@ -133,6 +140,7 @@ namespace TerraFX.Interop
         //  * bool mi_redirected
         //  * bool _mi_preloading()
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial bool mi_is_redirected() => false;
 
         // The following members have not been ported as they aren't needed for .NET:

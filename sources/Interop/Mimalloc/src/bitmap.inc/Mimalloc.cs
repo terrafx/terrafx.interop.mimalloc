@@ -5,6 +5,7 @@
 
 using System;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 
 namespace TerraFX.Interop
 {
@@ -26,6 +27,7 @@ namespace TerraFX.Interop
         ----------------------------------------------------------- */
 
         // Create a bit index.
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [return: NativeTypeName("mi_bitmap_index_t")]
         private static nuint mi_bitmap_index_create([NativeTypeName("size_t")] nuint idx, [NativeTypeName("size_t")] nuint bitidx)
         {
@@ -34,14 +36,17 @@ namespace TerraFX.Interop
         }
 
         // Get the field index from a bit index.
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [return: NativeTypeName("size_t")]
         private static nuint mi_bitmap_index_field([NativeTypeName("mi_bitmap_index_t")] nuint bitmap_idx) => bitmap_idx / MI_BITMAP_FIELD_BITS;
 
         // Get the bit index in a bitmap field
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [return: NativeTypeName("size_t")]
         private static nuint mi_bitmap_index_bit_in_field([NativeTypeName("mi_bitmap_index_t")] nuint bitmap_idx) => bitmap_idx % MI_BITMAP_FIELD_BITS;
 
         // Get the full bit index
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [return: NativeTypeName("size_t")]
         private static nuint mi_bitmap_index_bit([NativeTypeName("mi_bitmap_index_t")] nuint bitmap_idx) => bitmap_idx;
 
@@ -63,6 +68,7 @@ namespace TerraFX.Interop
           Use bit scan forward/reverse to quickly find the first zero bit if it is available
         ----------------------------------------------------------- */
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [return: NativeTypeName("size_t")]
         private static nuint mi_bsf([NativeTypeName("uintptr_t")] nuint x)
         {
@@ -76,6 +82,7 @@ namespace TerraFX.Interop
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [return: NativeTypeName("size_t")]
         private static nuint mi_bsr([NativeTypeName("uintptr_t")] nuint x)
         {
@@ -247,9 +254,11 @@ namespace TerraFX.Interop
             return (field & mask) == mask;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool mi_bitmap_is_claimed([NativeTypeName("mi_bitmap_t")] nuint* bitmap, [NativeTypeName("size_t")] nuint bitmap_fields, [NativeTypeName("size_t")] nuint count, [NativeTypeName("mi_bitmap_index_t")] nuint bitmap_idx)
             => mi_bitmap_is_claimedx(bitmap, bitmap_fields, count, bitmap_idx, out _);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool mi_bitmap_is_any_claimed([NativeTypeName("mi_bitmap_t")] nuint* bitmap, [NativeTypeName("size_t")] nuint bitmap_fields, [NativeTypeName("size_t")] nuint count, [NativeTypeName("mi_bitmap_index_t")] nuint bitmap_idx)
         {
             mi_bitmap_is_claimedx(bitmap, bitmap_fields, count, bitmap_idx, out bool any_ones);

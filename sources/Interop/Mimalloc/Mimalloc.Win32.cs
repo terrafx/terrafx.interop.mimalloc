@@ -15,6 +15,7 @@
 //  * um/winnt.h
 
 using System;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace TerraFX.Interop
@@ -81,6 +82,7 @@ namespace TerraFX.Interop
         [return: NativeTypeName("SIZE_T")]
         private static extern nuint GetLargePageMinimum();
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [return: NativeTypeName("DWORD")]
         private static uint GetLastError() => (uint)Marshal.GetLastWin32Error();
 

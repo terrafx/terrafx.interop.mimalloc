@@ -37,6 +37,7 @@ namespace TerraFX.Interop
         (gcc x64 has no register spills, and clang 6+ uses SSE instructions)
         -----------------------------------------------------------------------------*/
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [return: NativeTypeName("uint32_t")]
         private static uint rotl([NativeTypeName("uint32_t")] uint x, [NativeTypeName("uint32_t")] uint shift) => BitOperations.RotateLeft(x, (int)shift);
 
@@ -172,12 +173,14 @@ namespace TerraFX.Interop
         Random interface
         -----------------------------------------------------------------------------*/
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool mi_random_is_initialized([NativeTypeName("mi_random_ctx_t*")] in mi_random_ctx_t ctx)
         {
             mi_assert_internal((MI_DEBUG > 1) && (MI_DEBUG > 1));
             return ctx.input[0] != 0;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static partial void _mi_random_split(in mi_random_ctx_t ctx, out mi_random_ctx_t ctx_new)
         {
             Unsafe.SkipInit(out ctx_new);
@@ -188,6 +191,7 @@ namespace TerraFX.Interop
             chacha_split(in ctx, nonce: (nuint)Unsafe.AsPointer(ref ctx_new), out ctx_new);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static partial nuint _mi_random_next(ref mi_random_ctx_t ctx)
         {
             mi_assert_internal((MI_DEBUG > 1) && mi_random_is_initialized(in ctx));
