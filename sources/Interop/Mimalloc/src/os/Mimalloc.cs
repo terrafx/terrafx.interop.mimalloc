@@ -4,6 +4,7 @@
 // The original code is Copyright © Microsoft. All rights reserved. Licensed under the MIT License (MIT).
 
 using System;
+using System.Runtime.CompilerServices;
 using static TerraFX.Interop.mi_option_t;
 using static TerraFX.Interop.Mimalloc.MEM_EXTENDED_PARAMETER_TYPE;
 
@@ -19,17 +20,22 @@ namespace TerraFX.Interop
 
         private static partial bool _mi_os_decommit(void* addr, [NativeTypeName("size_t")] nuint size, [NativeTypeName("mi_stats_t*")] ref mi_stats_t stats);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void* mi_align_up_ptr(void* p, [NativeTypeName("size_t")] nuint alignment) => (void*)_mi_align_up((nuint)p, alignment);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [return: NativeTypeName("uintptr_t")]
         private static nuint _mi_align_down([NativeTypeName("uintptr_t")] nuint sz, [NativeTypeName("size_t")] nuint alignment) => sz / alignment * alignment;
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void* mi_align_down_ptr(void* p, [NativeTypeName("size_t")] nuint alignment) => (void*)_mi_align_down((nuint)p, alignment);
 
         // OS (small) page size
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static partial nuint _mi_os_page_size() => os_page_size;
 
         // if large OS pages are supported (2 or 4MiB), then return the size, otherwise return the small page size (4KiB)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static partial nuint _mi_os_large_page_size() => (large_os_page_size != 0) ? large_os_page_size : _mi_os_page_size();
 
         private static bool use_large_os_page([NativeTypeName("size_t")] nuint size, [NativeTypeName("size_t")] nuint alignment)
@@ -327,7 +333,7 @@ namespace TerraFX.Interop
                         is_large = true;
 
                         p = mi_unix_mmapx(addr, size, try_alignment, protect_flags, lflags, lfd);
-                        
+
                         if ((p == null) && ((lflags & MAP_HUGE_1GB) != 0))
                         {
                             // don't try huge 1GiB pages again
@@ -663,6 +669,7 @@ namespace TerraFX.Interop
             mi_os_mem_free(p, size, was_committed, ref stats);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static partial void _mi_os_free(void* p, nuint size, ref mi_stats_t stats) => _mi_os_free_ex(p, size, true, ref stats);
 
         private static partial void* _mi_os_alloc_aligned(nuint size, nuint alignment, bool commit, ref bool large, mi_os_tld_t* tld)
@@ -717,6 +724,7 @@ namespace TerraFX.Interop
             return start;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void* mi_os_page_align_area_conservative(void* addr, [NativeTypeName("size_t")] nuint size, [NativeTypeName("size_t*")] out nuint newsize) => mi_os_page_align_areax(true, addr, size, out newsize);
 
         private static void mi_mprotect_hint(int err)
@@ -804,18 +812,21 @@ namespace TerraFX.Interop
             return err == 0;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static partial bool _mi_os_commit(void* addr, nuint size, out bool is_zero, ref mi_stats_t tld_stats)
         {
             ref mi_stats_t stats = ref _mi_stats_main;
             return mi_os_commitx(addr, size, true, conservative: false, out is_zero, ref stats);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static partial bool _mi_os_decommit(void* addr, nuint size, ref mi_stats_t tld_stats)
         {
             ref mi_stats_t stats = ref _mi_stats_main;
             return mi_os_commitx(addr, size, false, conservative: true, out bool is_zero, ref stats);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool mi_os_commit_unreset(void* addr, [NativeTypeName("size_t")] nuint size, [NativeTypeName("bool*")] out bool is_zero, [NativeTypeName("mi_stats_t*")] ref mi_stats_t stats) => mi_os_commitx(addr, size, true, conservative: true, out is_zero, ref stats);
 
         // Signal to the OS that the address range is no longer in use
@@ -979,8 +990,10 @@ namespace TerraFX.Interop
             return err == 0;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static partial bool _mi_os_protect(void* addr, nuint size) => mi_os_protectx(addr, size, true);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static partial bool _mi_os_unprotect(void* addr, nuint size) => mi_os_protectx(addr, size, false);
 
         private static bool _mi_os_shrink(void* p, [NativeTypeName("size_t")] nuint oldsize, [NativeTypeName("size_t")] nuint newsize, [NativeTypeName("mi_stats_t*")] ref mi_stats_t stats)
@@ -1026,6 +1039,7 @@ namespace TerraFX.Interop
 
         private const nuint MI_HUGE_OS_PAGE_SIZE = GiB;
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [return: NativeTypeName("long")]
         private static nint mi_os_mbind(void* start, [NativeTypeName("unsigned long")] nuint len, [NativeTypeName("unsigned long")] nuint mode, [NativeTypeName("const unsigned long*")] nuint* nmask, [NativeTypeName("unsigned long")] nuint maxnode, [NativeTypeName("unsigned")] uint flags)
         {
@@ -1202,7 +1216,7 @@ namespace TerraFX.Interop
             // or to at least allocate as many as available on the system.
 
             long start_t = _mi_clock_start();
-            nuint  page;
+            nuint page;
 
             for (page = 0; page < pages; page++)
             {
@@ -1375,6 +1389,7 @@ namespace TerraFX.Interop
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static partial nuint _mi_os_numa_node_count_get()
         {
             mi_assert_internal((MI_DEBUG > 1) && (_mi_numa_node_count >= 1));

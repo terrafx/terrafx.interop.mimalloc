@@ -109,9 +109,17 @@ namespace TerraFX.Interop
 
         public static partial void* mi_calloc_aligned_at([NativeTypeName("size_t")] nuint count, [NativeTypeName("size_t")] nuint size, [NativeTypeName("size_t")] nuint alignment, [NativeTypeName("size_t")] nuint offset);
 
+        public static partial void* mi_mallocn_aligned([NativeTypeName("size_t")] nuint count, [NativeTypeName("size_t")] nuint size, [NativeTypeName("size_t")] nuint alignment);
+
+        public static partial void* mi_mallocn_aligned_at([NativeTypeName("size_t")] nuint count, [NativeTypeName("size_t")] nuint size, [NativeTypeName("size_t")] nuint alignment, [NativeTypeName("size_t")] nuint offset);
+
         public static partial void* mi_realloc_aligned(void* p, [NativeTypeName("size_t")] nuint newsize, [NativeTypeName("size_t")] nuint alignment);
 
         public static partial void* mi_realloc_aligned_at(void* p, [NativeTypeName("size_t")] nuint newsize, [NativeTypeName("size_t")] nuint alignment, [NativeTypeName("size_t")] nuint offset);
+
+        public static partial void* mi_reallocn_aligned(void* p, [NativeTypeName("size_t")] nuint count, [NativeTypeName("size_t")] nuint size, [NativeTypeName("size_t")] nuint alignment);
+
+        public static partial void* mi_reallocn_aligned_at(void* p, [NativeTypeName("size_t")] nuint count, [NativeTypeName("size_t")] nuint size, [NativeTypeName("size_t")] nuint alignment, [NativeTypeName("size_t")] nuint offset);
 
         // -------------------------------------------------------------------------------------
         // Heaps: first-class, but can only allocate from the same thread that created it.
@@ -172,9 +180,17 @@ namespace TerraFX.Interop
 
         public static partial void* mi_heap_calloc_aligned_at([NativeTypeName("mi_heap_t*")] IntPtr heap, [NativeTypeName("size_t")] nuint count, [NativeTypeName("size_t")] nuint size, [NativeTypeName("size_t")] nuint alignment, [NativeTypeName("size_t")] nuint offset);
 
+        public static partial void* mi_heap_mallocn_aligned([NativeTypeName("mi_heap_t*")] IntPtr heap, [NativeTypeName("size_t")] nuint count, [NativeTypeName("size_t")] nuint size, [NativeTypeName("size_t")] nuint alignment);
+
+        public static partial void* mi_heap_mallocn_aligned_at([NativeTypeName("mi_heap_t*")] IntPtr heap, [NativeTypeName("size_t")] nuint count, [NativeTypeName("size_t")] nuint size, [NativeTypeName("size_t")] nuint alignment, [NativeTypeName("size_t")] nuint offset);
+
         public static partial void* mi_heap_realloc_aligned([NativeTypeName("mi_heap_t*")] IntPtr heap, void* p, [NativeTypeName("size_t")] nuint newsize, [NativeTypeName("size_t")] nuint alignment);
 
         public static partial void* mi_heap_realloc_aligned_at([NativeTypeName("mi_heap_t*")] IntPtr heap, void* p, [NativeTypeName("size_t")] nuint newsize, [NativeTypeName("size_t")] nuint alignment, [NativeTypeName("size_t")] nuint offset);
+
+        public static partial void* mi_heap_reallocn_aligned([NativeTypeName("mi_heap_t*")] IntPtr heap, void* p, [NativeTypeName("size_t")] nuint count, [NativeTypeName("size_t")] nuint size, [NativeTypeName("size_t")] nuint alignment);
+
+        public static partial void* mi_heap_reallocn_aligned_at([NativeTypeName("mi_heap_t*")] IntPtr heap, void* p, [NativeTypeName("size_t")] nuint count, [NativeTypeName("size_t")] nuint size, [NativeTypeName("size_t")] nuint alignment, [NativeTypeName("size_t")] nuint offset);
 
         // --------------------------------------------------------------------------------
         // Zero initialized re-allocation.
@@ -252,12 +268,84 @@ namespace TerraFX.Interop
             where T : unmanaged => (T*)mi_mallocn(count, SizeOf<T>());
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static T* mi_realloc_tp<T>(void* p)
+            where T : unmanaged => (T*)mi_realloc(p, SizeOf<T>());
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static T* mi_reallocn_tp<T>(void* p, [NativeTypeName("size_t")] nuint count)
             where T : unmanaged => (T*)mi_reallocn(p, count, SizeOf<T>());
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static T* mi_rezalloc_tp<T>(void* p)
+            where T : unmanaged => (T*)mi_rezalloc(p, SizeOf<T>());
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static T* mi_recalloc_tp<T>(void* p, [NativeTypeName("size_t")] nuint newcount)
             where T : unmanaged => (T*)mi_recalloc(p, newcount, SizeOf<T>());
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static T* mi_malloc_aligned_tp<T>([NativeTypeName("size_t")] nuint alignment)
+            where T : unmanaged => (T*)mi_malloc_aligned(SizeOf<T>(), alignment);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static T* mi_malloc_aligned_at_tp<T>([NativeTypeName("size_t")] nuint alignment, [NativeTypeName("size_t")] nuint offset)
+            where T : unmanaged => (T*)mi_malloc_aligned_at(SizeOf<T>(), alignment, offset);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static T* mi_zalloc_aligned_tp<T>([NativeTypeName("size_t")] nuint alignment)
+            where T : unmanaged => (T*)mi_zalloc_aligned(SizeOf<T>(), alignment);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static T* mi_zalloc_aligned_at_tp<T>([NativeTypeName("size_t")] nuint alignment, [NativeTypeName("size_t")] nuint offset)
+            where T : unmanaged => (T*)mi_zalloc_aligned_at(SizeOf<T>(), alignment, offset);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static T* mi_calloc_aligned_tp<T>([NativeTypeName("size_t")] nuint count, [NativeTypeName("size_t")] nuint alignment)
+            where T : unmanaged => (T*)mi_calloc_aligned(count, SizeOf<T>(), alignment);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static T* mi_calloc_aligned_at_tp<T>([NativeTypeName("size_t")] nuint count, [NativeTypeName("size_t")] nuint alignment, [NativeTypeName("size_t")] nuint offset)
+            where T : unmanaged => (T*)mi_calloc_aligned_at(count, SizeOf<T>(), alignment, offset);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static T* mi_mallocn_aligned_tp<T>([NativeTypeName("size_t")] nuint count, [NativeTypeName("size_t")] nuint alignment)
+            where T : unmanaged => (T*)mi_mallocn_aligned(count, SizeOf<T>(), alignment);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static T* mi_mallocn_aligned_at_tp<T>([NativeTypeName("size_t")] nuint count, [NativeTypeName("size_t")] nuint alignment, [NativeTypeName("size_t")] nuint offset)
+            where T : unmanaged => (T*)mi_mallocn_aligned_at(count, SizeOf<T>(), alignment, offset);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static T* mi_realloc_aligned_tp<T>(void* p, [NativeTypeName("size_t")] nuint alignment)
+            where T : unmanaged => (T*)mi_realloc_aligned(p, SizeOf<T>(), alignment);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static T* mi_realloc_aligned_at_tp<T>(void* p, [NativeTypeName("size_t")] nuint alignment, [NativeTypeName("size_t")] nuint offset)
+            where T : unmanaged => (T*)mi_realloc_aligned_at(p, SizeOf<T>(), alignment, offset);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static T* mi_reallocn_aligned_tp<T>(void* p, [NativeTypeName("size_t")] nuint count, [NativeTypeName("size_t")] nuint alignment)
+            where T : unmanaged => (T*)mi_reallocn_aligned(p, count, SizeOf<T>(), alignment);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static T* mi_reallocn_aligned_at_tp<T>(void* p, [NativeTypeName("size_t")] nuint count, [NativeTypeName("size_t")] nuint alignment, [NativeTypeName("size_t")] nuint offset)
+            where T : unmanaged => (T*)mi_reallocn_aligned_at(p, count, SizeOf<T>(), alignment, offset);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static T* mi_rezalloc_aligned_tp<T>(void* p, [NativeTypeName("size_t")] nuint alignment)
+            where T : unmanaged => (T*)mi_rezalloc_aligned(p,  SizeOf<T>(), alignment);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static T* mi_rezalloc_aligned_at_tp<T>(void* p, [NativeTypeName("size_t")] nuint alignment, [NativeTypeName("size_t")] nuint offset)
+            where T : unmanaged => (T*)mi_rezalloc_aligned_at(p, SizeOf<T>(), alignment, offset);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static T* mi_recalloc_aligned_tp<T>(void* p, [NativeTypeName("size_t")] nuint newcount, [NativeTypeName("size_t")] nuint alignment)
+            where T : unmanaged => (T*)mi_recalloc_aligned(p, newcount, SizeOf<T>(), alignment);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static T* mi_recalloc_aligned_at_tp<T>(void* p, [NativeTypeName("size_t")] nuint newcount, [NativeTypeName("size_t")] nuint alignment, [NativeTypeName("size_t")] nuint offset)
+            where T : unmanaged => (T*)mi_recalloc_aligned_at(p, newcount, SizeOf<T>(), alignment, offset);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static T* mi_heap_malloc_tp<T>([NativeTypeName("mi_heap_t*")] IntPtr heap)
@@ -276,12 +364,84 @@ namespace TerraFX.Interop
             where T : unmanaged => (T*)mi_heap_mallocn(heap, count, SizeOf<T>());
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static T* mi_heap_realloc_tp<T>([NativeTypeName("mi_heap_t*")] IntPtr heap, void* p)
+            where T : unmanaged => (T*)mi_heap_realloc(heap, p, SizeOf<T>());
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static T* mi_heap_reallocn_tp<T>([NativeTypeName("mi_heap_t*")] IntPtr heap, void* p, [NativeTypeName("size_t")] nuint count)
             where T : unmanaged => (T*)mi_heap_reallocn(heap, p, count, SizeOf<T>());
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static T* mi_heap_rezalloc_tp<T>([NativeTypeName("mi_heap_t*")] IntPtr heap, void* p)
+            where T : unmanaged => (T*)mi_heap_rezalloc(heap, p, SizeOf<T>());
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static T* mi_heap_recalloc_tp<T>([NativeTypeName("mi_heap_t*")] IntPtr heap, void* p, [NativeTypeName("size_t")] nuint newcount)
             where T : unmanaged => (T*)mi_heap_recalloc(heap, p, newcount, SizeOf<T>());
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static T* mi_heap_malloc_aligned_tp<T>([NativeTypeName("mi_heap_t*")] IntPtr heap, [NativeTypeName("size_t")] nuint alignment)
+            where T : unmanaged => (T*)mi_heap_malloc_aligned(heap, SizeOf<T>(), alignment);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static T* mi_heap_malloc_aligned_at_tp<T>([NativeTypeName("mi_heap_t*")] IntPtr heap, [NativeTypeName("size_t")] nuint alignment, [NativeTypeName("size_t")] nuint offset)
+            where T : unmanaged => (T*)mi_heap_malloc_aligned_at(heap, SizeOf<T>(), alignment, offset);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static T* mi_heap_zalloc_aligned_tp<T>([NativeTypeName("mi_heap_t*")] IntPtr heap, [NativeTypeName("size_t")] nuint alignment)
+            where T : unmanaged => (T*)mi_heap_zalloc_aligned(heap, SizeOf<T>(), alignment);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static T* mi_heap_zalloc_aligned_at_tp<T>([NativeTypeName("mi_heap_t*")] IntPtr heap, [NativeTypeName("size_t")] nuint alignment, [NativeTypeName("size_t")] nuint offset)
+            where T : unmanaged => (T*)mi_heap_zalloc_aligned_at(heap, SizeOf<T>(), alignment, offset);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static T* mi_heap_calloc_aligned_tp<T>([NativeTypeName("mi_heap_t*")] IntPtr heap, [NativeTypeName("size_t")] nuint count, [NativeTypeName("size_t")] nuint alignment)
+            where T : unmanaged => (T*)mi_heap_calloc_aligned(heap, count, SizeOf<T>(), alignment);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static T* mi_heap_calloc_aligned_at_tp<T>([NativeTypeName("mi_heap_t*")] IntPtr heap, [NativeTypeName("size_t")] nuint count, [NativeTypeName("size_t")] nuint alignment, [NativeTypeName("size_t")] nuint offset)
+            where T : unmanaged => (T*)mi_heap_calloc_aligned_at(heap, count, SizeOf<T>(), alignment, offset);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static T* mi_heap_mallocn_aligned_tp<T>([NativeTypeName("mi_heap_t*")] IntPtr heap, [NativeTypeName("size_t")] nuint count, [NativeTypeName("size_t")] nuint alignment)
+            where T : unmanaged => (T*)mi_heap_mallocn_aligned(heap, count, SizeOf<T>(), alignment);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static T* mi_heap_mallocn_aligned_at_tp<T>([NativeTypeName("mi_heap_t*")] IntPtr heap, [NativeTypeName("size_t")] nuint count, [NativeTypeName("size_t")] nuint alignment, [NativeTypeName("size_t")] nuint offset)
+            where T : unmanaged => (T*)mi_heap_mallocn_aligned_at(heap, count, SizeOf<T>(), alignment, offset);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static T* mi_heap_realloc_aligned_tp<T>([NativeTypeName("mi_heap_t*")] IntPtr heap, void* p, [NativeTypeName("size_t")] nuint alignment)
+            where T : unmanaged => (T*)mi_heap_realloc_aligned(heap, p, SizeOf<T>(), alignment);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static T* mi_heap_realloc_aligned_at_tp<T>([NativeTypeName("mi_heap_t*")] IntPtr heap, void* p, [NativeTypeName("size_t")] nuint alignment, [NativeTypeName("size_t")] nuint offset)
+            where T : unmanaged => (T*)mi_heap_realloc_aligned_at(heap, p, SizeOf<T>(), alignment, offset);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static T* mi_heap_reallocn_aligned_tp<T>([NativeTypeName("mi_heap_t*")] IntPtr heap, void* p, [NativeTypeName("size_t")] nuint count, [NativeTypeName("size_t")] nuint alignment)
+            where T : unmanaged => (T*)mi_heap_reallocn_aligned(heap, p, count, SizeOf<T>(), alignment);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static T* mi_heap_reallocn_aligned_at_tp<T>([NativeTypeName("mi_heap_t*")] IntPtr heap, void* p, [NativeTypeName("size_t")] nuint count, [NativeTypeName("size_t")] nuint alignment, [NativeTypeName("size_t")] nuint offset)
+            where T : unmanaged => (T*)mi_heap_reallocn_aligned_at(heap, p, count, SizeOf<T>(), alignment, offset);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static T* mi_heap_rezalloc_aligned_tp<T>([NativeTypeName("mi_heap_t*")] IntPtr heap, void* p, [NativeTypeName("size_t")] nuint alignment)
+            where T : unmanaged => (T*)mi_heap_rezalloc_aligned(heap, p, SizeOf<T>(), alignment);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static T* mi_heap_rezalloc_aligned_at_tp<T>([NativeTypeName("mi_heap_t*")] IntPtr heap, void* p, [NativeTypeName("size_t")] nuint alignment, [NativeTypeName("size_t")] nuint offset)
+            where T : unmanaged => (T*)mi_heap_rezalloc_aligned_at(heap, p, SizeOf<T>(), alignment, offset);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static T* mi_heap_recalloc_aligned_tp<T>([NativeTypeName("mi_heap_t*")] IntPtr heap, void* p, [NativeTypeName("size_t")] nuint newcount, [NativeTypeName("size_t")] nuint alignment)
+            where T : unmanaged => (T*)mi_heap_recalloc_aligned(heap, p, newcount, SizeOf<T>(), alignment);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static T* mi_heap_recalloc_aligned_at_tp<T>([NativeTypeName("mi_heap_t*")] IntPtr heap, void* p, [NativeTypeName("size_t")] nuint newcount, [NativeTypeName("size_t")] nuint alignment, [NativeTypeName("size_t")] nuint offset)
+            where T : unmanaged => (T*)mi_heap_recalloc_aligned_at(heap, p, newcount, SizeOf<T>(), alignment, offset);
 
         // ------------------------------------------------------
         // Options, all `false` by default

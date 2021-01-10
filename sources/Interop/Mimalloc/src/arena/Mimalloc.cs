@@ -3,6 +3,8 @@
 // This file includes code based on the arena.c file from https://github.com/microsoft/mimalloc
 // The original code is Copyright © Microsoft. All rights reserved. Licensed under the MIT License (MIT).
 
+using System.Runtime.CompilerServices;
+
 namespace TerraFX.Interop
 {
     public static unsafe partial class Mimalloc
@@ -46,6 +48,7 @@ namespace TerraFX.Interop
         // Use `0` as a special id for direct OS allocated memory.
         private const nuint MI_MEMID_OS = 0;
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [return: NativeTypeName("size_t")]
         private static nuint mi_arena_id_create([NativeTypeName("size_t")] nuint arena_index, [NativeTypeName("mi_bitmap_index_t")] nuint bitmap_index)
         {
@@ -57,6 +60,7 @@ namespace TerraFX.Interop
             return (bitmap_index << 8) | ((arena_index + 1) & 0xFF);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void mi_arena_id_indices([NativeTypeName("size_t")] nuint memid, [NativeTypeName("size_t*")] out nuint arena_index, [NativeTypeName("mi_bitmap_index_t*")] out nuint bitmap_index)
         {
             mi_assert_internal((MI_DEBUG > 1) && (memid != MI_MEMID_OS));
@@ -64,6 +68,7 @@ namespace TerraFX.Interop
             bitmap_index = memid >> 8;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [return: NativeTypeName("size_t")]
         private static nuint mi_block_count_of_size([NativeTypeName("size_t")] nuint size) => _mi_divide_up(size, MI_ARENA_BLOCK_SIZE);
 
@@ -183,7 +188,7 @@ namespace TerraFX.Interop
 
                     // numa local, large OS pages allowed, or arena is not large OS pages
 
-                    if (((arena->numa_node < 0) || (arena->numa_node == numa_node)) && (large || !arena->is_large)) 
+                    if (((arena->numa_node < 0) || (arena->numa_node == numa_node)) && (large || !arena->is_large))
                     {
                         void* p = mi_arena_alloc_from(arena, i, bcount, ref commit, ref large, out is_zero, out memid, tld);
                         mi_assert_internal((MI_DEBUG > 1) && (((nuint)p % alignment) == 0));
@@ -229,6 +234,7 @@ namespace TerraFX.Interop
             return _mi_os_alloc_aligned(size, alignment, commit, ref large, tld);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static partial void* _mi_arena_alloc(nuint size, ref bool commit, ref bool large, out bool is_zero, out nuint memid, mi_os_tld_t* tld)
             => _mi_arena_alloc_aligned(size, MI_ARENA_BLOCK_SIZE, ref commit, ref large, out is_zero, out memid, tld);
 

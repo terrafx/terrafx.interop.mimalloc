@@ -3,14 +3,19 @@
 // This file includes code based on the alloc-posix.c file from https://github.com/microsoft/mimalloc
 // The original code is Copyright © Microsoft. All rights reserved. Licensed under the MIT License (MIT).
 
+using System.Runtime.CompilerServices;
+
 namespace TerraFX.Interop
 {
     public static unsafe partial class Mimalloc
     {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial nuint mi_malloc_size(void* p) => mi_usable_size(p);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial nuint mi_malloc_usable_size(void* p) => mi_usable_size(p);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial void mi_cfree(void* p)
         {
             if (mi_is_in_heap_region(p))
@@ -61,6 +66,7 @@ namespace TerraFX.Interop
             return p;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial void* mi_valloc(nuint size) => mi_memalign(_mi_os_page_size(), size);
 
         public static partial void* mi_pvalloc(nuint size)
@@ -145,6 +151,7 @@ namespace TerraFX.Interop
             return p;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial byte* mi_mbsdup(byte* s) => (byte*)mi_strdup((sbyte*)s);
 
         public static partial int mi_dupenv_s(sbyte** buf, nuint* size, sbyte* name)
@@ -230,9 +237,11 @@ namespace TerraFX.Interop
         }
 
         // Microsoft
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial void* mi_aligned_offset_recalloc(void* p, nuint newcount, nuint size, nuint alignment, nuint offset) => mi_recalloc_aligned_at(p, newcount, size, alignment, offset);
 
         // Microsoft
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial void* mi_aligned_recalloc(void* p, nuint newcount, nuint size, nuint alignment) => mi_recalloc_aligned(p, newcount, size, alignment);
     }
 }

@@ -5,6 +5,7 @@
 
 using System;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using static TerraFX.Interop.mi_init_t;
 using static TerraFX.Interop.mi_option_t;
 
@@ -15,6 +16,7 @@ namespace TerraFX.Interop
         // The following members have not been ported as they aren't needed for .NET:
         //  * void mi_add_stderr_output()
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial int mi_version() => MI_MALLOC_VERSION;
 
         private static partial void mi_option_init([NativeTypeName("mi_option_desc_t*")] ref mi_option_desc_t desc);
@@ -76,14 +78,19 @@ namespace TerraFX.Interop
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial bool mi_option_is_enabled(mi_option_t option) => mi_option_get(option) != 0;
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial void mi_option_set_enabled(mi_option_t option, bool enable) => mi_option_set(option, enable ? 1 : 0);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial void mi_option_set_enabled_default(mi_option_t option, bool enable) => mi_option_set_default(option, enable ? 1 : 0);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial void mi_option_enable(mi_option_t option) => mi_option_set_enabled(option, true);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial void mi_option_disable(mi_option_t option) => mi_option_set_enabled(option, false);
 
         private static void mi_out_stderr([NativeTypeName("const char*")] string msg, void* arg)
@@ -107,9 +114,11 @@ namespace TerraFX.Interop
         // Default output handler
         // --------------------------------------------------------
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [return: NativeTypeName("mi_output_fun*")]
         private static mi_output_fun mi_out_get_default() => mi_out_default;
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [return: NativeTypeName("mi_output_fun*")]
         private static mi_output_fun mi_out_get_default([NativeTypeName("void**")] out void* parg)
         {
@@ -119,6 +128,7 @@ namespace TerraFX.Interop
 #pragma warning restore CS0420
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial void mi_register_output(mi_output_fun? @out, void* arg)
         {
 #pragma warning disable CS0420
@@ -166,6 +176,7 @@ namespace TerraFX.Interop
             _mi_fputs(@out, arg, prefix, buf);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static partial void _mi_fprintf(mi_output_fun? @out, void* arg, string fmt, params object[] args) => mi_vfprintf(@out, arg, string.Empty, fmt, args);
 
         private static partial void _mi_trace_message(string fmt, params object[] args)

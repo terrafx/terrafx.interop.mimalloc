@@ -5,6 +5,7 @@
 
 using System;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using static TerraFX.Interop.mi_delayed_t;
 using static TerraFX.Interop.mi_page_kind_t;
 
@@ -16,10 +17,13 @@ namespace TerraFX.Interop
           Queue query
         ----------------------------------------------------------- */
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool mi_page_queue_is_huge([NativeTypeName("const mi_page_queue_t*")] mi_page_queue_t* pq) => pq->block_size == (MI_LARGE_OBJ_SIZE_MAX + SizeOf<nuint>());
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool mi_page_queue_is_full([NativeTypeName("const mi_page_queue_t*")] mi_page_queue_t* pq) => pq->block_size == (MI_LARGE_OBJ_SIZE_MAX + (2 * SizeOf<nuint>()));
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool mi_page_queue_is_special([NativeTypeName("const mi_page_queue_t*")] mi_page_queue_t* pq) => pq->block_size > MI_LARGE_OBJ_SIZE_MAX;
 
         /* -----------------------------------------------------------
@@ -28,10 +32,12 @@ namespace TerraFX.Interop
 
         // Bit scan reverse: return the index of the highest bit.
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [return: NativeTypeName("uint8_t")]
         private static byte mi_bsr32([NativeTypeName("uint32_t")] uint x) => (byte)(31 - BitOperations.LeadingZeroCount(x));
 
         // Bit scan reverse: return the index of the highest bit.
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static partial byte _mi_bsr(nuint x)
         {
             if (Environment.Is64BitProcess)
@@ -99,9 +105,11 @@ namespace TerraFX.Interop
           Queue of pages with free blocks
         ----------------------------------------------------------- */
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static partial nuint _mi_bin_size(byte bin) => (&_mi_heap_empty_pages->e0)[bin].block_size;
 
         // Good size for allocation
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static partial nuint mi_good_size(nuint size)
         {
             if (size <= MI_LARGE_OBJ_SIZE_MAX)
@@ -137,6 +145,7 @@ namespace TerraFX.Interop
             return list == page;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool mi_heap_contains_queue([NativeTypeName("const mi_heap_t*")] mi_heap_t* heap, [NativeTypeName("const mi_page_queue_t*")] mi_page_queue_t* pq)
         {
             mi_assert_internal((MI_DEBUG > 1) && (MI_DEBUG > 1));
@@ -237,6 +246,7 @@ namespace TerraFX.Interop
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool mi_page_queue_is_empty(mi_page_queue_t* queue) => queue->first == null;
 
         private static void mi_page_queue_remove(mi_page_queue_t* queue, mi_page_t* page)

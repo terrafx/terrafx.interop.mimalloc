@@ -3,6 +3,7 @@
 // This file includes code based on the segment.c file from https://github.com/microsoft/mimalloc
 // The original code is Copyright © Microsoft. All rights reserved. Licensed under the MIT License (MIT).
 
+using System.Runtime.CompilerServices;
 using static TerraFX.Interop.mi_delayed_t;
 using static TerraFX.Interop.mi_option_t;
 using static TerraFX.Interop.mi_page_kind_t;
@@ -63,6 +64,7 @@ namespace TerraFX.Interop
             return list == segment;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool mi_segment_queue_is_empty([NativeTypeName("const mi_segment_queue_t*")] mi_segment_queue_t* queue) => queue->first == null;
 
         private static void mi_segment_queue_remove(mi_segment_queue_t* queue, mi_segment_t* segment)
@@ -129,6 +131,7 @@ namespace TerraFX.Interop
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static mi_segment_queue_t* mi_segment_free_queue([NativeTypeName("const mi_segment_t*")] mi_segment_t* segment, mi_segments_tld_t* tld) => mi_segment_free_queue_of_kind(segment->page_kind, tld);
 
         // remove from free queue if it is in one
@@ -145,6 +148,7 @@ namespace TerraFX.Interop
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void mi_segment_insert_in_free_queue(mi_segment_t* segment, mi_segments_tld_t* tld) => mi_segment_enqueue(mi_segment_free_queue(segment, tld), segment);
 
         /* -----------------------------------------------------------
@@ -166,6 +170,7 @@ namespace TerraFX.Interop
             return in_queue;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [return: NativeTypeName("size_t")]
         private static nuint mi_segment_page_size([NativeTypeName("const mi_segment_t*")] mi_segment_t* segment)
         {
@@ -250,6 +255,7 @@ namespace TerraFX.Interop
           Guard pages
         ----------------------------------------------------------- */
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void mi_segment_protect_range(void* p, [NativeTypeName("size_t")] nuint size, bool protect)
         {
             if (protect)
@@ -385,12 +391,14 @@ namespace TerraFX.Interop
         // a 32-bit field while the clock is always 64-bit we need to guard
         // against overflow, we use substraction to check for expiry which work
         // as long as the reset delay is under (2^30 - 1) milliseconds (~12 days)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void mi_page_reset_set_expire(mi_page_t* page)
         {
             uint expire = (uint)_mi_clock_now() + (uint)mi_option_get(mi_option_reset_delay);
             page->used = expire;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool mi_page_reset_is_expired(mi_page_t* page, [NativeTypeName("mi_msecs_t")] long now)
         {
             int expire = (int)page->used;
@@ -1002,6 +1010,7 @@ namespace TerraFX.Interop
 #pragma warning restore CS0420
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static mi_segment_t* mi_segment_alloc([NativeTypeName("size_t")] nuint required, mi_page_kind_t page_kind, [NativeTypeName("size_t")] nuint page_shift, mi_segments_tld_t* tld, mi_os_tld_t* os_tld)
             => mi_segment_init(null, required, page_kind, page_shift, tld, os_tld);
 
@@ -1038,6 +1047,7 @@ namespace TerraFX.Interop
           Free page management inside a segment
         ----------------------------------------------------------- */
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool mi_segment_has_free([NativeTypeName("const mi_segment_t*")] mi_segment_t* segment) => segment->used < segment->capacity;
 
         private static bool mi_segment_page_claim(mi_segment_t* segment, mi_page_t* page, mi_segments_tld_t* tld)
@@ -1225,8 +1235,10 @@ namespace TerraFX.Interop
         would be spread among all other segments in the regions.
         ----------------------------------------------------------- */
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static mi_segment_t* mi_tagged_segment_ptr([NativeTypeName("mi_tagged_segment_t")] nuint ts) => (mi_segment_t*)(ts & ~MI_TAGGED_MASK);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [return: NativeTypeName("mi_tagged_segment_t")]
         private static nuint mi_tagged_segment(mi_segment_t* segment, [NativeTypeName("mi_tagged_segment_t")] nuint ts)
         {
@@ -1599,7 +1611,7 @@ namespace TerraFX.Interop
                     if (mi_page_all_free(page))
                     {
                         // if everything free already, clear the page directly; reset is ok now
-                        mi_segment_page_clear(segment, page, true, tld); 
+                        mi_segment_page_clear(segment, page, true, tld);
                     }
                     else
                     {
@@ -1774,7 +1786,7 @@ namespace TerraFX.Interop
         private static mi_page_t* mi_segment_page_alloc(mi_heap_t* heap, [NativeTypeName("size_t")] nuint block_size, mi_page_kind_t kind, [NativeTypeName("size_t")] nuint page_shift, mi_segments_tld_t* tld, mi_os_tld_t* os_tld)
         {
             // find an available segment the segment free queue
-            mi_segment_queue_t * free_queue = mi_segment_free_queue_of_kind(kind, tld);
+            mi_segment_queue_t* free_queue = mi_segment_free_queue_of_kind(kind, tld);
 
             if (mi_segment_queue_is_empty(free_queue))
             {
@@ -1806,9 +1818,11 @@ namespace TerraFX.Interop
             return page;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static mi_page_t* mi_segment_small_page_alloc(mi_heap_t* heap, [NativeTypeName("size_t")] nuint block_size, mi_segments_tld_t* tld, mi_os_tld_t* os_tld)
             => mi_segment_page_alloc(heap, block_size, MI_PAGE_SMALL, (nuint)MI_SMALL_PAGE_SHIFT, tld, os_tld);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static mi_page_t* mi_segment_medium_page_alloc(mi_heap_t* heap, [NativeTypeName("size_t")] nuint block_size, mi_segments_tld_t* tld, mi_os_tld_t* os_tld)
             => mi_segment_page_alloc(heap, block_size, MI_PAGE_MEDIUM, (nuint)MI_MEDIUM_PAGE_SHIFT, tld, os_tld);
 
