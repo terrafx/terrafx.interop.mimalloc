@@ -2,6 +2,7 @@
 
 using System;
 using System.Runtime.InteropServices;
+using System.Threading;
 using static TerraFX.Interop.mi_init_t;
 using static TerraFX.Interop.mi_option_t;
 
@@ -321,7 +322,7 @@ namespace TerraFX.Interop
 
         // the thread-local default heap for allocation
         [ThreadStatic]
-        private static readonly mi_heap_t* _mi_heap_default = create_mi_heap_default();
+        private static mi_heap_t* _mi_heap_default;
 
         //
         // alloc.c
