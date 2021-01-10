@@ -335,7 +335,17 @@ namespace TerraFX.Interop
         private static partial mi_heap_t* _mi_heap_main_get();
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static mi_heap_t* mi_get_default_heap() => _mi_heap_default;
+        private static mi_heap_t* mi_get_default_heap()
+        {
+            var mi_heap_default = _mi_heap_default;
+
+            if (mi_unlikely(mi_heap_default == null))
+            {
+                mi_heap_default = create_mi_heap_default();
+                _mi_heap_default = mi_heap_default;
+            }
+            return mi_heap_default;
+        }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool mi_heap_is_default([NativeTypeName("const mi_heap_t")] mi_heap_t* heap) => heap == mi_get_default_heap();
