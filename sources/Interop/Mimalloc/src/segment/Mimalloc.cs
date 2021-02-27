@@ -1005,7 +1005,7 @@ namespace TerraFX.Interop
                 mi_segment_insert_in_free_queue(segment, tld);
             }
 
-            _mi_fprintf(null, null, "mimalloc: alloc segment at {0:X}\n", (nuint)segment);
+            _mi_verbose_message("mimalloc: alloc segment at {0:X}\n", (nuint)segment);
             return segment;
 #pragma warning restore CS0420
         }
