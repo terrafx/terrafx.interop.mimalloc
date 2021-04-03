@@ -100,7 +100,7 @@ namespace TerraFX.Interop
 
         private static readonly int MAP_NORESERVE = IsLinux ? 0x4000 : (IsMacOS ? 0x40 : 0);
 
-        private static readonly nuint MPOL_PREFERRED = IsLinux ? 1 : 0;
+        private static readonly nuint MPOL_PREFERRED = IsLinux ? 1u : 0u;
 
         private static readonly int PROT_NONE = 0x0;
 
@@ -154,11 +154,11 @@ namespace TerraFX.Interop
 
         // Reserve extra padding at the end of each block to be more resilient against heap block overflows.
         // The padding can detect byte-precise buffer overflow on free.
-        private static readonly uint MI_PADDING = get_app_context_data(nameof(MI_PADDING), (MI_DEBUG >= 1) ? 1 : 0);
+        private static readonly uint MI_PADDING = get_app_context_data(nameof(MI_PADDING), (MI_DEBUG >= 1) ? 1u : 0u);
 
         // Encoded free lists allow detection of corrupted free lists
         // and can detect buffer overflows, modify after free, and double `free`s.
-        private static readonly uint MI_ENCODE_FREELIST = get_app_context_data(nameof(MI_ENCODE_FREELIST), ((MI_SECURE >= 3) || (MI_DEBUG >= 1) || (MI_PADDING > 0)) ? 1 : 0);
+        private static readonly uint MI_ENCODE_FREELIST = get_app_context_data(nameof(MI_ENCODE_FREELIST), ((MI_SECURE >= 3) || (MI_DEBUG >= 1) || (MI_PADDING > 0)) ? 1u : 0u);
 
         private static readonly int MI_INTPTR_SHIFT = Environment.Is64BitProcess ? 3 : 2;
 
@@ -204,7 +204,7 @@ namespace TerraFX.Interop
         private static readonly nuint MI_PAGES_DIRECT = MI_SMALL_WSIZE_MAX + MI_PADDING_WSIZE + 1;
 
         // Define MI_STAT as 1 to maintain statistics; set it to 2 to have detailed statistics (but costs some performance).
-        private static readonly uint MI_STAT = get_app_context_data(nameof(MI_STAT), (MI_DEBUG > 0) ? 2 : 0);
+        private static readonly uint MI_STAT = get_app_context_data(nameof(MI_STAT), (MI_DEBUG > 0) ? 2u : 0u);
 
         //
         // options.c
