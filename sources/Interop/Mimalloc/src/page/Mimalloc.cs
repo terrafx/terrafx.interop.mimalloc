@@ -520,7 +520,7 @@ namespace TerraFX.Interop
                     // the only page in the queue?
                     mi_stat_counter_increase(ref _mi_stats_main.page_no_retire, 1);
 
-                    page->retire_expire = (page->xblock_size <= MI_SMALL_OBJ_SIZE_MAX) ? MI_RETIRE_CYCLES : (MI_RETIRE_CYCLES / 4);
+                    page->retire_expire = (page->xblock_size <= MI_SMALL_OBJ_SIZE_MAX) ? MI_RETIRE_CYCLES : (byte)(MI_RETIRE_CYCLES / 4);
 
                     mi_heap_t* heap = mi_page_heap(page);
                     mi_assert_internal((MI_DEBUG > 1) && (pq >= &heap->pages.e0));
