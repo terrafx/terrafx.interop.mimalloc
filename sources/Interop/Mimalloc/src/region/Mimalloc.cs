@@ -47,11 +47,11 @@ namespace TerraFX.Interop
 
         private static partial bool _mi_os_unprotect(void* addr, [NativeTypeName("size_t")] nuint size);
 
-        private static partial bool _mi_os_commit(void* p, [NativeTypeName("size_t")] nuint size, [NativeTypeName("bool*")] out bool is_zero, [NativeTypeName("mi_stats_t*")] ref mi_stats_t stats);
+        private static partial bool _mi_os_commit(void* addr, [NativeTypeName("size_t")] nuint size, [NativeTypeName("bool*")] out bool is_zero, [NativeTypeName("mi_stats_t*")] ref mi_stats_t tld_stats);
 
-        private static partial bool _mi_os_reset(void* p, [NativeTypeName("size_t")] nuint size, [NativeTypeName("mi_stats_t*")] ref mi_stats_t stats);
+        private static partial bool _mi_os_reset(void* addr, [NativeTypeName("size_t")] nuint size, [NativeTypeName("mi_stats_t*")] ref mi_stats_t tld_stats);
 
-        private static partial bool _mi_os_unreset(void* p, [NativeTypeName("size_t")] nuint size, [NativeTypeName("bool*")] out bool is_zero, [NativeTypeName("mi_stats_t*")] ref mi_stats_t stats);
+        private static partial bool _mi_os_unreset(void* addr, [NativeTypeName("size_t")] nuint size, [NativeTypeName("bool*")] out bool is_zero, [NativeTypeName("mi_stats_t*")] ref mi_stats_t tld_stats);
 
         // arena.c
         private static partial void _mi_arena_free(void* p, [NativeTypeName("size_t")] nuint size, [NativeTypeName("size_t")] nuint memid, bool all_committed, [NativeTypeName("mi_stats_t*")] ref mi_stats_t stats);

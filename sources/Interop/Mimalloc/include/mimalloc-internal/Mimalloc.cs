@@ -45,7 +45,7 @@ namespace TerraFX.Interop
 
         private static partial void _mi_random_init([NativeTypeName("mi_random_ctx_t*")] out mi_random_ctx_t ctx);
 
-        private static partial void _mi_random_split([NativeTypeName("mi_random_ctx_t*")] in mi_random_ctx_t ctx, [NativeTypeName("mi_random_ctx_t*")] out mi_random_ctx_t new_ctx);
+        private static partial void _mi_random_split([NativeTypeName("mi_random_ctx_t*")] in mi_random_ctx_t ctx, [NativeTypeName("mi_random_ctx_t*")] out mi_random_ctx_t ctx_new);
 
         [return: NativeTypeName("uintptr_t")]
         private static partial nuint _mi_random_next([NativeTypeName("mi_random_ctx_t*")] ref mi_random_ctx_t ctx);
@@ -75,7 +75,7 @@ namespace TerraFX.Interop
         //  * void _mi_os_init()
 
         // to allocate thread local data
-        private static partial void* _mi_os_alloc([NativeTypeName("size_t")] nuint size, [NativeTypeName("mi_stats_t*")] ref mi_stats_t stats);
+        private static partial void* _mi_os_alloc([NativeTypeName("size_t")] nuint size, [NativeTypeName("mi_stats_t*")] ref mi_stats_t tld_stats);
 
         // to free thread local data
         private static partial void _mi_os_free(void* p, [NativeTypeName("size_t")] nuint size, [NativeTypeName("mi_stats_t*")] ref mi_stats_t stats);
@@ -85,9 +85,9 @@ namespace TerraFX.Interop
 
         // memory.c
 
-        private static partial void* _mi_mem_alloc_aligned([NativeTypeName("size_t")] nuint size, [NativeTypeName("size_t")] nuint alignment, [NativeTypeName("bool*")] ref bool commit, [NativeTypeName("bool*")] ref bool large, [NativeTypeName("bool*")] out bool is_zero, [NativeTypeName("size_t*")] out nuint id, mi_os_tld_t* tld);
+        private static partial void* _mi_mem_alloc_aligned([NativeTypeName("size_t")] nuint size, [NativeTypeName("size_t")] nuint alignment, [NativeTypeName("bool*")] ref bool commit, [NativeTypeName("bool*")] ref bool large, [NativeTypeName("bool*")] out bool is_zero, [NativeTypeName("size_t*")] out nuint memid, mi_os_tld_t* tld);
 
-        private static partial void _mi_mem_free(void* p, [NativeTypeName("size_t")] nuint size, [NativeTypeName("size_t")] nuint id, bool fully_committed, bool any_reset, mi_os_tld_t* tld);
+        private static partial void _mi_mem_free(void* p, [NativeTypeName("size_t")] nuint size, [NativeTypeName("size_t")] nuint id, bool full_commit, bool any_reset, mi_os_tld_t* tld);
 
         private static partial bool _mi_mem_reset(void* p, [NativeTypeName("size_t")] nuint size, mi_os_tld_t* tld);
 
@@ -95,15 +95,15 @@ namespace TerraFX.Interop
 
         private static partial bool _mi_mem_commit(void* p, [NativeTypeName("size_t")] nuint size, [NativeTypeName("bool*")] out bool is_zero, mi_os_tld_t* tld);
 
-        private static partial bool _mi_mem_protect(void* addr, [NativeTypeName("size_t")] nuint size);
+        private static partial bool _mi_mem_protect(void* p, [NativeTypeName("size_t")] nuint size);
 
-        private static partial bool _mi_mem_unprotect(void* addr, [NativeTypeName("size_t")] nuint size);
+        private static partial bool _mi_mem_unprotect(void* p, [NativeTypeName("size_t")] nuint size);
 
         private static partial void _mi_mem_collect(mi_os_tld_t* tld);
 
         // "segment.c"
 
-        private static partial mi_page_t* _mi_segment_page_alloc(mi_heap_t* heap, [NativeTypeName("size_t")] nuint block_wsize, mi_segments_tld_t* tld, mi_os_tld_t* os_tld);
+        private static partial mi_page_t* _mi_segment_page_alloc(mi_heap_t* heap, [NativeTypeName("size_t")] nuint block_size, mi_segments_tld_t* tld, mi_os_tld_t* os_tld);
 
         private static partial void _mi_segment_page_free(mi_page_t* page, bool force, mi_segments_tld_t* tld);
 

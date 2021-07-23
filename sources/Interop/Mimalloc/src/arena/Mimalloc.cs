@@ -34,9 +34,9 @@ namespace TerraFX.Interop
 
         private static partial void* _mi_os_alloc_aligned([NativeTypeName("size_t")] nuint size, [NativeTypeName("size_t")] nuint alignment, bool commit, [NativeTypeName("bool*")] ref bool large, mi_os_tld_t* tld);
 
-        private static partial void _mi_os_free_ex(void* p, [NativeTypeName("size_t")] nuint size, bool was_committed, [NativeTypeName("mi_stats_t*")] ref mi_stats_t stats);
+        private static partial void _mi_os_free_ex(void* p, [NativeTypeName("size_t")] nuint size, bool was_committed, [NativeTypeName("mi_stats_t*")] ref mi_stats_t tld_stats);
 
-        private static partial void* _mi_os_alloc_huge_os_pages([NativeTypeName("size_t")] nuint pages, int numa_node, [NativeTypeName("mi_msecs_t")] long max_secs, [NativeTypeName("size_t*")] out nuint pages_reserved, [NativeTypeName("size_t*")] out nuint psize);
+        private static partial void* _mi_os_alloc_huge_os_pages([NativeTypeName("size_t")] nuint pages, int numa_node, [NativeTypeName("mi_msecs_t")] long max_msecs, [NativeTypeName("size_t*")] out nuint pages_reserved, [NativeTypeName("size_t*")] out nuint psize);
 
         private static partial void _mi_os_free_huge_pages(void* p, [NativeTypeName("size_t")] nuint size, [NativeTypeName("mi_stats_t*")] ref mi_stats_t stats);
 

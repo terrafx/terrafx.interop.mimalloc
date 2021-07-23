@@ -26,7 +26,7 @@ namespace TerraFX.Interop
             return (mi_block_t*)((byte*)page_start + (i * block_size));
         }
 
-        private static partial void mi_page_init(mi_heap_t* heap, mi_page_t* page, [NativeTypeName("size_t")] nuint size, mi_tld_t* tld);
+        private static partial void mi_page_init(mi_heap_t* heap, mi_page_t* page, [NativeTypeName("size_t")] nuint block_size, mi_tld_t* tld);
 
         private static partial void mi_page_extend_free(mi_heap_t* heap, mi_page_t* page, mi_tld_t* tld);
 
