@@ -95,7 +95,7 @@ namespace TerraFX.Interop
             return false;
         }
 
-        private static partial void _mi_thread_done(mi_heap_t* default_heap);
+        private static partial void _mi_thread_done(mi_heap_t* heap);
 
         // The following members have not been ported as they aren't needed for .NET:
         //  * bool tls_initialized

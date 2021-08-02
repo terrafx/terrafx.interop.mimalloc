@@ -18,7 +18,7 @@ namespace TerraFX.Interop
           large OS pages (if MIMALLOC_LARGE_OS_PAGES is true).
         ----------------------------------------------------------- */
 
-        private static partial bool _mi_os_decommit(void* addr, [NativeTypeName("size_t")] nuint size, [NativeTypeName("mi_stats_t*")] ref mi_stats_t stats);
+        private static partial bool _mi_os_decommit(void* addr, [NativeTypeName("size_t")] nuint size, [NativeTypeName("mi_stats_t*")] ref mi_stats_t tld_stats);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void* mi_align_up_ptr(void* p, [NativeTypeName("size_t")] nuint alignment) => (void*)_mi_align_up((nuint)p, alignment);

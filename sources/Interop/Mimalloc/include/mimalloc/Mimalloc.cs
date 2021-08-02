@@ -62,7 +62,7 @@ namespace TerraFX.Interop
         // Internals
         // ------------------------------------------------------
 
-        public static partial void mi_register_deferred_free([NativeTypeName("mi_deferred_free_fun*")] mi_deferred_free_fun? deferred_free, void* arg);
+        public static partial void mi_register_deferred_free([NativeTypeName("mi_deferred_free_fun*")] mi_deferred_free_fun? fn, void* arg);
 
         public static partial void mi_register_output([NativeTypeName("mi_output_fun*")] mi_output_fun? @out, void* arg);
 
@@ -87,7 +87,7 @@ namespace TerraFX.Interop
 
         public static partial void mi_thread_done();
 
-        public static partial void mi_thread_stats_print_out([NativeTypeName("mi_output_fun*")] mi_output_fun @out, void* arg);
+        public static partial void mi_thread_stats_print_out([NativeTypeName("mi_output_fun*")] mi_output_fun? @out, void* arg);
 
         public static partial void mi_process_info([NativeTypeName("size_t*")] nuint* elapsed_msecs, [NativeTypeName("size_t*")] nuint* user_msecs, [NativeTypeName("size_t*")] nuint* system_msecs, [NativeTypeName("size_t*")] nuint* current_rss, [NativeTypeName("size_t*")] nuint* peak_rss, [NativeTypeName("size_t*")] nuint* current_commit, [NativeTypeName("size_t*")] nuint* peak_commit, [NativeTypeName("size_t*")] nuint* page_faults);
 
@@ -151,7 +151,7 @@ namespace TerraFX.Interop
 
         public static partial void* mi_heap_mallocn([NativeTypeName("mi_heap_t*")] IntPtr heap, [NativeTypeName("size_t")] nuint count, [NativeTypeName("size_t")] nuint size);
 
-        public static partial void* mi_heap_malloc_small([NativeTypeName("mi_heap_t*")] IntPtr pheap, [NativeTypeName("size_t")] nuint size);
+        public static partial void* mi_heap_malloc_small([NativeTypeName("mi_heap_t*")] IntPtr heap, [NativeTypeName("size_t")] nuint size);
 
         public static partial void* mi_heap_realloc([NativeTypeName("mi_heap_t*")] IntPtr heap, void* p, [NativeTypeName("size_t")] nuint newsize);
 
@@ -201,7 +201,7 @@ namespace TerraFX.Interop
 
         public static partial void* mi_rezalloc(void* p, [NativeTypeName("size_t")] nuint newsize);
 
-        public static partial void* mi_recalloc(void* p, [NativeTypeName("size_t")] nuint newcount, [NativeTypeName("size_t")] nuint size);
+        public static partial void* mi_recalloc(void* p, [NativeTypeName("size_t")] nuint count, [NativeTypeName("size_t")] nuint size);
 
         public static partial void* mi_rezalloc_aligned(void* p, [NativeTypeName("size_t")] nuint newsize, [NativeTypeName("size_t")] nuint alignment);
 
@@ -213,7 +213,7 @@ namespace TerraFX.Interop
 
         public static partial void* mi_heap_rezalloc([NativeTypeName("mi_heap_t*")] IntPtr heap, void* p, [NativeTypeName("size_t")] nuint newsize);
 
-        public static partial void* mi_heap_recalloc([NativeTypeName("mi_heap_t*")] IntPtr heap, void* p, [NativeTypeName("size_t")] nuint newcount, [NativeTypeName("size_t")] nuint size);
+        public static partial void* mi_heap_recalloc([NativeTypeName("mi_heap_t*")] IntPtr heap, void* p, [NativeTypeName("size_t")] nuint count, [NativeTypeName("size_t")] nuint size);
 
         public static partial void* mi_heap_rezalloc_aligned([NativeTypeName("mi_heap_t*")] IntPtr heap, void* p, [NativeTypeName("size_t")] nuint newsize, [NativeTypeName("size_t")] nuint alignment);
 
@@ -233,7 +233,7 @@ namespace TerraFX.Interop
 
         public static partial bool mi_check_owned([NativeTypeName("const void*")] void* p);
 
-        public static partial bool mi_heap_visit_blocks([NativeTypeName("const mi_heap_t*")] IntPtr heap, bool visit_all_blocks, mi_block_visit_fun visitor, void* arg);
+        public static partial bool mi_heap_visit_blocks([NativeTypeName("const mi_heap_t*")] IntPtr heap, bool visit_blocks, mi_block_visit_fun visitor, void* arg);
 
         // Experimental
         public static partial bool mi_is_in_heap_region([NativeTypeName("const void*")] void* p);
