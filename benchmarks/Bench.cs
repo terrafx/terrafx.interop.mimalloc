@@ -1,11 +1,28 @@
 using BenchmarkDotNet.Attributes;
+using BenchmarkDotNet.Configs;
+using BenchmarkDotNet.Environments;
+using BenchmarkDotNet.Jobs;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace Benchmarks
 {
+    [Config(typeof(ConfigWithCustomEnvVars))]
     public unsafe class AllocatorBenchmarks
     {
+        private class ConfigWithCustomEnvVars : ManualConfig
+        {
+            private const string TiredCompilation = "COMPlus_TieredCompilation";
+
+            public ConfigWithCustomEnvVars()
+            {
+                AddJob(Job.Default.WithRuntime(CoreRuntime.Core60).WithId("Default"));
+                AddJob(Job.Default.WithRuntime(CoreRuntime.Core60)
+                    .WithEnvironmentVariables(new EnvironmentVariable(TiredCompilation, "0"))
+                    .WithId("Tired compilation disabled"));
+            }
+        }
+
         [Params(100, 10_000)]
         public int Size { get; set; }
 

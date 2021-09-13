@@ -1,6 +1,6 @@
-﻿// See https://aka.ms/new-console-template for more information
+// See https://aka.ms/new-console-template for more information
 
-using Beee;
+using Benchmarks;
 using BenchmarkDotNet.Running;
 
-BenchmarkRunner.Run<Bebe>();
+BenchmarkRunner.Run<AllocatorBenchmarks>();
