@@ -9,11 +9,20 @@ Packages are available at: https://github.com/orgs/terrafx/packages or via the N
 
 ## Table of Contents
 
+* [Benchmarks](#benchmarks)
 * [Code of Conduct](#code-of-conduct)
 * [License](#license)
 * [Contributing](#contributing)
 * [Goals](#goals)
 * [Languages and Frameworks](#languages-and-frameworks)
+
+### Benchmarks
+
+`MimAlloc` may be up to **2 times** faster than `NativeMemory.Alloc` and
+`Marshal.AllocHGlobal` methods (allocation + deallocation).
+
+See more detailed benchmarks: [**raw**](./benchmarks/BenchmarkResultsRaw.md),
+[**interpreted**](./benchmarks/BenchmarkResultsInterpreted.md).
 
 ### Code of Conduct
 
