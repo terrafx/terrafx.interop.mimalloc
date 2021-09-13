@@ -18,7 +18,7 @@ Packages are available at: https://github.com/orgs/terrafx/packages or via the N
 
 ### Benchmarks
 
-`MimAlloc` may be up to **2 times** faster than `NativeMemory.Alloc` and
+`Mimalloc.mi_malloc` takes **20%**-**50%** less time than `NativeMemory.Alloc` and
 `Marshal.AllocHGlobal` methods (allocation + deallocation).
 
 See more detailed benchmarks: [**raw**](./../benchmarks/BenchmarkResultsRaw.md),
