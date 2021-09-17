@@ -71,8 +71,17 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "workflows", "workflows", "{
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "benchmarks", "benchmarks", "{F5A2F613-4AF4-4B25-A682-EB51DB0AA247}"
+	ProjectSection(SolutionItems) = preProject
+		benchmarks\Directory.Build.props = benchmarks\Directory.Build.props
+	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TerraFX.Interop.Mimalloc.AllocatorsBenchmarks", "benchmarks\TerraFX.Interop.Mimalloc.AllocatorsBenchmarks.csproj", "{462F78DC-D207-4FCA-87B1-207013618A37}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "benchmarks", "benchmarks", "{2F3C5A61-647D-4C08-A061-9EFE28E59962}"
+	ProjectSection(SolutionItems) = preProject
+		docs\benchmarks\BenchmarkResultsInterpreted.md = docs\benchmarks\BenchmarkResultsInterpreted.md
+		docs\benchmarks\BenchmarkResultsRaw.md = docs\benchmarks\BenchmarkResultsRaw.md
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -105,6 +114,7 @@ Global
 		{FE1214EA-21BD-4087-AD01-D42DBA8572FE} = {32D5D5C6-C467-4200-A978-4DCEBAD16ABF}
 		{2BDD70BB-9023-44D6-A27B-AB51F667C254} = {14317A6D-D419-404D-A4A9-E64088152E32}
 		{462F78DC-D207-4FCA-87B1-207013618A37} = {F5A2F613-4AF4-4B25-A682-EB51DB0AA247}
+		{2F3C5A61-647D-4C08-A061-9EFE28E59962} = {8793898A-6542-4606-AA82-AB14151D2D20}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {2FE36DF8-2D9C-4F20-8787-45DC74B57461}
