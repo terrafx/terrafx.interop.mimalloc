@@ -40,6 +40,13 @@ end_of_line = crlf
 indent_style = tab
 
 ###############################################################################
+# Set dotnet diagnostic rules to:
+#    suppress warnings around ModuleInitializer usage
+###############################################################################
+[*.cs]
+dotnet_diagnostic.CA2255.severity = none
+
+###############################################################################
 # Set dotnet naming rules to:
 #    suggest async members be pascal case suffixed with Async
 #    suggest const declarations be pascal case

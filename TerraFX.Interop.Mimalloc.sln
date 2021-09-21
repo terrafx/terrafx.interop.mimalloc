@@ -73,6 +73,7 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "benchmarks", "benchmarks", "{F5A2F613-4AF4-4B25-A682-EB51DB0AA247}"
 	ProjectSection(SolutionItems) = preProject
 		benchmarks\Directory.Build.props = benchmarks\Directory.Build.props
+		benchmarks\Directory.Build.targets = benchmarks\Directory.Build.targets
 	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TerraFX.Interop.Mimalloc.AllocatorsBenchmarks", "benchmarks\TerraFX.Interop.Mimalloc.AllocatorsBenchmarks.csproj", "{462F78DC-D207-4FCA-87B1-207013618A37}"
