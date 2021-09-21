@@ -19,6 +19,6 @@
   <Import Project="$(MSBuildThisFileDirectory)..\Directory.Build.props" />
 
   <ItemGroup>
-    <PackageReference Include="BenchmarkDotNet" />
+    <PackageReference Include="BenchmarkDotNet" IsImplicitlyDefined="true" PrivateAssets="all" />
   </ItemGroup>
 </Project>
