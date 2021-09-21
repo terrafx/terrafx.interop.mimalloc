@@ -14,6 +14,7 @@ Packages are available at: https://github.com/orgs/terrafx/packages or via the N
 * [Contributing](#contributing)
 * [Goals](#goals)
 * [Languages and Frameworks](#languages-and-frameworks)
+* [Benchmarks](#benchmarks)
 
 ### Code of Conduct
 
@@ -46,3 +47,11 @@ based applications.
 
 TerraFX uses C# as its primary development language and .NET Core as our primary
 target framework.
+
+### Benchmarks
+
+`Mimalloc.mi_malloc` takes **20%**-**50%** less time than `NativeMemory.Alloc` and
+`Marshal.AllocHGlobal` methods (allocation + deallocation).
+
+See more detailed benchmarks: [**raw**](./../docs/benchmarks/BenchmarkResultsRaw.md),
+[**interpreted**](./../docs/benchmarks/BenchmarkResultsInterpreted.md).
