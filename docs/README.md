@@ -54,4 +54,4 @@ target framework.
 `Marshal.AllocHGlobal` methods (allocation + deallocation).
 
 See more detailed benchmarks: [**raw**](./../docs/benchmarks/BenchmarkResultsRaw.md),
-[**interpreted**](./../docs/benchmarks/BenchmarkResultsInterpreted.md), [source](./../benchmarks/Bench.cs).
+[**interpreted**](./../docs/benchmarks/BenchmarkResultsInterpreted.md).
