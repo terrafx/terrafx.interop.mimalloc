@@ -15,7 +15,7 @@ namespace TerraFX.Interop.Benchmarks
         public int IterCount { get; set; }
 
         [Benchmark]
-        public void TestMimAlloc()
+        public void TestMimalloc()
         {
             for (int i = 0; i < IterCount; i++)
             {
