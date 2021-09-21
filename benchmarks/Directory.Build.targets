@@ -15,9 +15,4 @@
   </PropertyGroup>
 
   <Import Project="$(MSBuildThisFileDirectory)..\Directory.Build.targets" />
-
-  <ItemGroup>
-    <PackageReference Update="BenchmarkDotNet" Version="0.13.1" />
-  </ItemGroup>
-
 </Project>
