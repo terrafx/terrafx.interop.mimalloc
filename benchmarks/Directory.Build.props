@@ -11,8 +11,9 @@
   -->
 
   <PropertyGroup>
-    <EmbedUntrackedSources>true</EmbedUntrackedSources>
-    <MSBuildAllProjects>$(MSBuildAllProjects);$(MSBuildThisFileDirectory)..\Directory.Build.props</MSBuildAllProjects>
+    <IsPackable>false</IsPackable>
+    <NoWarn>$(NoWarn);1591</NoWarn>
+    <OutputType>Exe</OutputType>
     <TerraFXProjectCategory>benchmarks</TerraFXProjectCategory>
   </PropertyGroup>
 
@@ -21,4 +22,5 @@
   <ItemGroup>
     <PackageReference Include="BenchmarkDotNet" IsImplicitlyDefined="true" PrivateAssets="all" />
   </ItemGroup>
+
 </Project>

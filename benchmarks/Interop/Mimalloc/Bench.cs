@@ -3,6 +3,7 @@
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using BenchmarkDotNet.Attributes;
+using static TerraFX.Interop.Mimalloc;
 
 namespace TerraFX.Interop.Benchmarks
 {
@@ -17,18 +18,18 @@ namespace TerraFX.Interop.Benchmarks
         [Benchmark]
         public void TestMimalloc()
         {
-            for (int i = 0; i < IterCount; i++)
+            for (var i = 0; i < IterCount; i++)
             {
-                var p = (byte*)TerraFX.Interop.Mimalloc.mi_malloc((nuint)Size);
+                var p = (byte*)mi_malloc((nuint)Size);
                 Consume(&p);
-                TerraFX.Interop.Mimalloc.mi_free(p);
+                mi_free(p);
             }
         }
         
         [Benchmark]
         public void TestGCAlloc()
         {
-            for (int i = 0; i < IterCount; i++)
+            for (var i = 0; i < IterCount; i++)
             {
                 var p = new byte[Size];
                 Consume(ref p);
@@ -38,7 +39,7 @@ namespace TerraFX.Interop.Benchmarks
         [Benchmark]
         public void TestNativeAlloc()
         {
-            for (int i = 0; i < IterCount; i++)
+            for (var i = 0; i < IterCount; i++)
             {
                 var p = (byte*)NativeMemory.Alloc((nuint)Size);
                 Consume(&p);
@@ -49,7 +50,7 @@ namespace TerraFX.Interop.Benchmarks
         [Benchmark]
         public void TestAllocHGlobal()
         {
-            for (int i = 0; i < IterCount; i++)
+            for (var i = 0; i < IterCount; i++)
             {
                 var p = (byte*)Marshal.AllocHGlobal(Size);
                 Consume(&p);
