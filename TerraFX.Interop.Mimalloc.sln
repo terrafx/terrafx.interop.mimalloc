@@ -38,6 +38,9 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "sources", "sources", "{0B82
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Interop", "Interop", "{70FBCFD9-B96E-4E72-B35C-681D9B2DA3D6}"
+	ProjectSection(SolutionItems) = preProject
+		sources\Interop\.editorconfig = sources\Interop\.editorconfig
+	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Mimalloc", "Mimalloc", "{63D2AF3C-3ACA-4FEA-94F9-58A30B5D175A}"
 EndProject
