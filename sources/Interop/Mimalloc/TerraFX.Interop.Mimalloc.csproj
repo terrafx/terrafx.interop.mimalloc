@@ -3,9 +3,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <NoWarn>1591;$(NoWarn)</NoWarn>
+    <NoWarn>1591;CA2255;$(NoWarn)</NoWarn>
     <RootNamespace>TerraFX.Interop</RootNamespace>
-    <TargetFrameworks>net5.0;net6.0</TargetFrameworks>
+    <TargetFrameworks>net6.0</TargetFrameworks>
   </PropertyGroup>
 
 </Project>
