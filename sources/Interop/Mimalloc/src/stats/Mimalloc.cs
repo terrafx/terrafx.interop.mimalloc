@@ -44,11 +44,11 @@ namespace TerraFX.Interop
 
                 if (amount > 0)
                 {
-                    mi_atomic_addi64_relaxed(ref stat.allocated, amount);
+                    _ = mi_atomic_addi64_relaxed(ref stat.allocated, amount);
                 }
                 else
                 {
-                    mi_atomic_addi64_relaxed(ref stat.freed, -amount);
+                    _ = mi_atomic_addi64_relaxed(ref stat.freed, -amount);
                 }
             }
             else
@@ -76,8 +76,8 @@ namespace TerraFX.Interop
         {
             if (mi_is_in_main(ref stat))
             {
-                mi_atomic_addi64_relaxed(ref stat.count, 1);
-                mi_atomic_addi64_relaxed(ref stat.total, (long)amount);
+                _ = mi_atomic_addi64_relaxed(ref stat.count, 1);
+                _ = mi_atomic_addi64_relaxed(ref stat.total, (long)amount);
             }
             else
             {
@@ -105,12 +105,12 @@ namespace TerraFX.Interop
                 return;
             }
 
-            mi_atomic_addi64_relaxed(ref stat.allocated, src.allocated * unit);
-            mi_atomic_addi64_relaxed(ref stat.current, src.current * unit);
-            mi_atomic_addi64_relaxed(ref stat.freed, src.freed * unit);
+            _ = mi_atomic_addi64_relaxed(ref stat.allocated, src.allocated * unit);
+            _ = mi_atomic_addi64_relaxed(ref stat.current, src.current * unit);
+            _ = mi_atomic_addi64_relaxed(ref stat.freed, src.freed * unit);
 
             // peak scores do not work across threads.. 
-            mi_atomic_addi64_relaxed(ref stat.peak, src.peak * unit);
+            _ = mi_atomic_addi64_relaxed(ref stat.peak, src.peak * unit);
         }
 
         private static void mi_stat_counter_add([NativeTypeName("mi_stat_count_t*")] ref mi_stat_counter_t stat, [NativeTypeName("const mi_stat_counter_t*")] in mi_stat_counter_t src, [NativeTypeName("int64_t")] long unit)
@@ -120,8 +120,8 @@ namespace TerraFX.Interop
                 return;
             }
 
-            mi_atomic_addi64_relaxed(ref stat.total, src.total * unit);
-            mi_atomic_addi64_relaxed(ref stat.count, src.count * unit);
+            _ = mi_atomic_addi64_relaxed(ref stat.total, src.total * unit);
+            _ = mi_atomic_addi64_relaxed(ref stat.count, src.count * unit);
         }
 
         // must be thread safe as it is called from stats_merge
@@ -513,13 +513,13 @@ namespace TerraFX.Interop
             if (IsWindows)
             {
                 FILETIME ct, ut, st, et;
-                GetProcessTimes(GetCurrentProcess(), &ct, &et, &st, &ut);
+                _ = GetProcessTimes(GetCurrentProcess(), &ct, &et, &st, &ut);
 
                 utime = filetime_msecs(in ut);
                 stime = filetime_msecs(in st);
 
                 PROCESS_MEMORY_COUNTERS info;
-                GetProcessMemoryInfo(GetCurrentProcess(), &info, SizeOf<PROCESS_MEMORY_COUNTERS>());
+                _ = GetProcessMemoryInfo(GetCurrentProcess(), &info, SizeOf<PROCESS_MEMORY_COUNTERS>());
 
                 current_rss = info.WorkingSetSize;
                 peak_rss = info.PeakWorkingSetSize;
@@ -532,7 +532,7 @@ namespace TerraFX.Interop
                 elapsed = _mi_clock_end(mi_process_start);
 
                 rusage rusage;
-                getrusage(RUSAGE_SELF, &rusage);
+                _ = getrusage(RUSAGE_SELF, &rusage);
 
                 utime = timeval_secs(in rusage.ru_utime);
                 stime = timeval_secs(in rusage.ru_stime);

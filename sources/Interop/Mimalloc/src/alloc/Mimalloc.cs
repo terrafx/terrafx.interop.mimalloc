@@ -40,7 +40,7 @@ namespace TerraFX.Interop
             {
                 if (!page->is_zero)
                 {
-                    memset(block, MI_DEBUG_UNINIT, size);
+                    _ = memset(block, MI_DEBUG_UNINIT, size);
                 }
             }
             else if (MI_SECURE != 0)
@@ -171,7 +171,7 @@ namespace TerraFX.Interop
             else
             {
                 // otherwise memset
-                memset(p, 0, mi_usable_size(p));
+                _ = memset(p, 0, mi_usable_size(p));
             }
         }
 
@@ -394,7 +394,7 @@ namespace TerraFX.Interop
 
             if (MI_DEBUG != 0)
             {
-                memset(block, MI_DEBUG_FREED, mi_usable_size(block));
+                _ = memset(block, MI_DEBUG_FREED, mi_usable_size(block));
             }
 
             // huge page segments are always abandoned and can be freed immediately
@@ -480,7 +480,7 @@ namespace TerraFX.Interop
 
                 if (MI_DEBUG != 0)
                 {
-                    memset(block, MI_DEBUG_FREED, mi_page_block_size(page));
+                    _ = memset(block, MI_DEBUG_FREED, mi_page_block_size(page));
                 }
 
                 mi_block_set_next(page, block, page->local_free);
@@ -601,7 +601,7 @@ namespace TerraFX.Interop
 
                 if (MI_DEBUG != 0)
                 {
-                    memset(block, MI_DEBUG_FREED, mi_page_block_size(page));
+                    _ = memset(block, MI_DEBUG_FREED, mi_page_block_size(page));
                 }
 
                 mi_block_set_next(page, block, page->local_free);
@@ -812,10 +812,10 @@ namespace TerraFX.Interop
                 {
                     // also set last word in the previous allocation to zero to ensure any padding is zero-initialized
                     nuint start = (size >= SizeOf<nuint>()) ? size - SizeOf<nuint>() : 0;
-                    memset((byte*)newp + start, 0, newsize - start);
+                    _ = memset((byte*)newp + start, 0, newsize - start);
                 }
 
-                memcpy(newp, p, (newsize > size) ? size : newsize);
+                _ = memcpy(newp, p, (newsize > size) ? size : newsize);
 
                 // only free if successful
                 mi_free(p);
@@ -912,7 +912,7 @@ namespace TerraFX.Interop
 
             if (t != null)
             {
-                memcpy(t, s, n + 1);
+                _ = memcpy(t, s, n + 1);
             }
             return t;
         }
@@ -946,7 +946,7 @@ namespace TerraFX.Interop
                 return null;
             }
 
-            memcpy(t, s, m);
+            _ = memcpy(t, s, m);
             t[m] = 0;
 
             return t;
@@ -1121,7 +1121,7 @@ namespace TerraFX.Interop
             if (mi_unlikely(mi_count_size_overflow(count, size, out nuint total)))
             {
                 // on overflow we invoke the try_new_handler once to potentially throw std::bad_alloc
-                mi_try_new_handler(false);
+                _ = mi_try_new_handler(false);
 
                 return null;
             }
@@ -1149,7 +1149,7 @@ namespace TerraFX.Interop
             if (mi_unlikely(mi_count_size_overflow(newcount, size, out nuint total)))
             {
                 // on overflow we invoke the try_new_handler once to potentially throw std::bad_alloc
-                mi_try_new_handler(false);
+                _ = mi_try_new_handler(false);
 
                 return null;
             }

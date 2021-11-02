@@ -29,7 +29,7 @@ namespace TerraFX.Interop
             for (int i = 0; i < (int)_mi_option_last; i++)
             {
                 mi_option_t option = (mi_option_t)i;
-                int l = mi_option_get(option);
+                _ = mi_option_get(option);
 
                 if (option != mi_option_verbose)
                 {

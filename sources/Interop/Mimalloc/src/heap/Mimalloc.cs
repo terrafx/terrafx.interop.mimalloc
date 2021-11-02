@@ -82,7 +82,7 @@ namespace TerraFX.Interop
             mi_assert_internal((MI_DEBUG > 1) && (MI_DEBUG >= 3));
             mi_assert_internal((MI_DEBUG > 1) && (heap != null));
 
-            mi_heap_visit_pages(heap, mi_heap_page_is_valid, null, null);
+            _ = mi_heap_visit_pages(heap, mi_heap_page_is_valid, null, null);
             return true;
         }
 
@@ -146,7 +146,7 @@ namespace TerraFX.Interop
             // if abandoning, mark all pages to no longer add to delayed_free
             if (collect == MI_ABANDON)
             {
-                mi_heap_visit_pages(heap, mi_heap_page_never_delayed_free, null, null);
+                _ = mi_heap_visit_pages(heap, mi_heap_page_never_delayed_free, null, null);
             }
 
             // free thread delayed blocks.
@@ -157,7 +157,7 @@ namespace TerraFX.Interop
             _mi_heap_collect_retired(heap, collect >= MI_FORCE);
 
             // collect all pages owned by this thread
-            mi_heap_visit_pages(heap, mi_heap_page_collect, &collect, null);
+            _ = mi_heap_visit_pages(heap, mi_heap_page_collect, &collect, null);
 
             mi_assert_internal((MI_DEBUG > 1) && ((collect != MI_ABANDON) || (mi_atomic_load_ptr_acquire<mi_block_t>(ref heap->thread_delayed_free) == null)));
 
@@ -347,7 +347,7 @@ namespace TerraFX.Interop
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static partial void _mi_heap_destroy_pages(mi_heap_t* heap)
         {
-            mi_heap_visit_pages(heap, _mi_heap_page_destroy, null, null);
+            _ = mi_heap_visit_pages(heap, _mi_heap_page_destroy, null, null);
             mi_heap_reset_pages(heap);
         }
 
@@ -516,7 +516,7 @@ namespace TerraFX.Interop
             }
 
             bool found = false;
-            mi_heap_visit_pages(heap, mi_heap_page_check_owned, (void*)p, &found);
+            _ = mi_heap_visit_pages(heap, mi_heap_page_check_owned, (void*)p, &found);
             return found;
         }
 
@@ -572,7 +572,7 @@ namespace TerraFX.Interop
             // create a bitmap of free blocks.
 
             nuint* free_map = stackalloc nuint[(int)(MI_MAX_BLOCKS / SizeOf<nuint>())];
-            memset(free_map, 0, MI_MAX_BLOCKS / SizeOf<nuint>());
+            _ = memset(free_map, 0, MI_MAX_BLOCKS / SizeOf<nuint>());
 
             nuint free_count = 0;
 

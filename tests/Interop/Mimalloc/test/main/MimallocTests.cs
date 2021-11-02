@@ -16,8 +16,8 @@ namespace TerraFX.Interop.UnitTests
         {
             IntPtr heap = mi_heap_new();
 
-            void* p1 = mi_heap_malloc(heap, 32);
-            void* p2 = mi_heap_malloc(heap, 48);
+            _ = mi_heap_malloc(heap, 32);
+            _ = mi_heap_malloc(heap, 48);
 
             mi_free(p_out);
             mi_heap_destroy(heap);

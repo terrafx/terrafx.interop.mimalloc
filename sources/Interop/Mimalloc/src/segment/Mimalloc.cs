@@ -260,11 +260,11 @@ namespace TerraFX.Interop
         {
             if (protect)
             {
-                _mi_mem_protect(p, size);
+                _ = _mi_mem_protect(p, size);
             }
             else
             {
-                _mi_mem_unprotect(p, size);
+                _ = _mi_mem_unprotect(p, size);
             }
         }
 
@@ -314,7 +314,7 @@ namespace TerraFX.Interop
                     {
                         if ((&segment->pages.e0)[i].is_committed)
                         {
-                            mi_segment_protect_range((byte*)segment + (i + 1) * page_size - os_psize, os_psize, protect);
+                            mi_segment_protect_range((byte*)segment + ((i + 1) * page_size) - os_psize, os_psize, protect);
                         }
                     }
                 }
@@ -348,7 +348,7 @@ namespace TerraFX.Interop
 
             if (reset_size > 0)
             {
-                _mi_mem_reset(start, reset_size, tld->os);
+                _ = _mi_mem_reset(start, reset_size, tld->os);
             }
         }
 
@@ -563,7 +563,7 @@ namespace TerraFX.Interop
         private static partial byte* mi_segment_raw_page_start(mi_segment_t* segment, mi_page_t* page, out nuint page_size)
         {
             nuint psize = (segment->page_kind == MI_PAGE_HUGE) ? segment->segment_size : ((nuint)1 << (int)segment->page_shift);
-            byte* p = (byte*)segment + page->segment_idx * psize;
+            byte* p = (byte*)segment + (page->segment_idx * psize);
 
             if (page->segment_idx == 0)
             {
@@ -624,8 +624,7 @@ namespace TerraFX.Interop
             nuint minsize = SizeOf<mi_segment_t>() + ((capacity - 1) * SizeOf<mi_page_t>()) + padding;
 
             nuint guardsize = 0;
-            nuint isize = 0;
-
+            nuint isize;
             if (MI_SECURE == 0)
             {
                 // normally no guard pages
@@ -646,7 +645,7 @@ namespace TerraFX.Interop
             info_size = isize;
             pre_size = isize + guardsize;
 
-            return (required == 0) ? MI_SEGMENT_SIZE : _mi_align_up(required + isize + 2 * guardsize, MI_PAGE_HUGE_ALIGN);
+            return (required == 0) ? MI_SEGMENT_SIZE : _mi_align_up(required + isize + (2 * guardsize), MI_PAGE_HUGE_ALIGN);
         }
 
         /* ----------------------------------------------------------------------------
@@ -893,7 +892,7 @@ namespace TerraFX.Interop
                             else
                             {
                                 // todo: only unreset the part that was reset? (instead of the full page)
-                                mi_page_unreset(segment, page, 0, tld);
+                                _ = mi_page_unreset(segment, page, 0, tld);
                             }
                         }
                     }
@@ -955,7 +954,7 @@ namespace TerraFX.Interop
             }
 
             mi_assert_internal((MI_DEBUG > 1) && (segment != null) && (((nuint)segment % MI_SEGMENT_SIZE) == 0));
-            mi_assert_internal((MI_DEBUG > 1) && (segment->mem_is_fixed ? segment->mem_is_committed : true));
+            mi_assert_internal((MI_DEBUG > 1) && (!segment->mem_is_fixed || segment->mem_is_committed));
 
             // tsan
             mi_atomic_store_ptr_release<mi_segment_t>(ref segment->abandoned_next, null);
@@ -965,7 +964,7 @@ namespace TerraFX.Interop
                 // zero the segment info (but not the `mem` fields)
 
                 nint ofs = (nint)offsetof(segment, &segment->next);
-                memset((byte*)segment + ofs, 0, info_size - (nuint)ofs);
+                _ = memset((byte*)segment + ofs, 0, info_size - (nuint)ofs);
 
                 // initialize pages info
                 for (byte i = 0; i < capacity; i++)
@@ -982,7 +981,7 @@ namespace TerraFX.Interop
             {
                 // zero the segment info but not the pages info (and mem fields)
                 nint ofs = (nint)offsetof(segment, &segment->next);
-                memset((byte*)segment + ofs, 0, offsetof(segment, &segment->pages) - (nuint)ofs);
+                _ = memset((byte*)segment + ofs, 0, offsetof(segment, &segment->pages) - (nuint)ofs);
             }
 
             // initialize
@@ -1155,7 +1154,7 @@ namespace TerraFX.Interop
             ushort reserved = page->reserved;
 
             nint ofs = (nint)offsetof(page, &page->capacity);
-            memset((byte*)page + ofs, 0, SizeOf<mi_page_t>() - (nuint)ofs);
+            _ = memset((byte*)page + ofs, 0, SizeOf<mi_page_t>() - (nuint)ofs);
 
             page->capacity = capacity;
             page->reserved = reserved;
@@ -1288,7 +1287,7 @@ namespace TerraFX.Interop
             }
             while (!mi_atomic_cas_ptr_weak_release(ref abandoned_visited, ref anext, segment));
 
-            mi_atomic_increment_relaxed(ref abandoned_visited_count);
+            _ = mi_atomic_increment_relaxed(ref abandoned_visited_count);
 #pragma warning restore CS0420
         }
 
@@ -1321,8 +1320,8 @@ namespace TerraFX.Interop
 
                 if (mi_atomic_cas_strong_acq_rel(ref abandoned, ref ts, afirst))
                 {
-                    mi_atomic_add_relaxed(ref abandoned_count, count);
-                    mi_atomic_sub_relaxed(ref abandoned_visited_count, count);
+                    _ = mi_atomic_add_relaxed(ref abandoned_count, count);
+                    _ = mi_atomic_sub_relaxed(ref abandoned_visited_count, count);
 
                     return true;
                 }
@@ -1351,8 +1350,8 @@ namespace TerraFX.Interop
             }
             while (!mi_atomic_cas_weak_release(ref abandoned, ref anext, afirst));
 
-            mi_atomic_add_relaxed(ref abandoned_count, count);
-            mi_atomic_sub_relaxed(ref abandoned_visited_count, count);
+            _ = mi_atomic_add_relaxed(ref abandoned_count, count);
+            _ = mi_atomic_sub_relaxed(ref abandoned_visited_count, count);
 
             return true;
 #pragma warning restore CS0420
@@ -1377,7 +1376,7 @@ namespace TerraFX.Interop
             }
             while (!mi_atomic_cas_weak_release(ref abandoned, ref ts, next));
 
-            mi_atomic_increment_relaxed(ref abandoned_count);
+            _ = mi_atomic_increment_relaxed(ref abandoned_count);
 #pragma warning restore CS0420
         }
 
@@ -1423,7 +1422,7 @@ namespace TerraFX.Interop
             // (this is called from `region.c:_mi_mem_free` for example)
 
             // ensure no segment gets decommitted
-            mi_atomic_increment_relaxed(ref abandoned_readers);
+            _ = mi_atomic_increment_relaxed(ref abandoned_readers);
 
             nuint next = 0;
             ts = mi_atomic_load_acquire(ref abandoned);
@@ -1443,12 +1442,12 @@ namespace TerraFX.Interop
             while ((segment != null) && !mi_atomic_cas_weak_acq_rel(ref abandoned, ref ts, next));
 
             // release reader lock
-            mi_atomic_decrement_relaxed(ref abandoned_readers);
+            _ = mi_atomic_decrement_relaxed(ref abandoned_readers);
 
             if (segment != null)
             {
                 mi_atomic_store_ptr_release(ref segment->abandoned_next, null);
-                mi_atomic_decrement_relaxed(ref abandoned_count);
+                _ = mi_atomic_decrement_relaxed(ref abandoned_count);
             }
 
             return segment;
@@ -1658,7 +1657,7 @@ namespace TerraFX.Interop
 
             while ((segment = mi_abandoned_pop()) != null)
             {
-                mi_segment_reclaim(segment, heap, 0, out _, tld);
+                _ = mi_segment_reclaim(segment, heap, 0, out _, tld);
             }
         }
 
@@ -1684,7 +1683,7 @@ namespace TerraFX.Interop
                     // segment that is still partially used.
                     // note2: we could in principle optimize this by skipping reclaim and directly
                     // freeing but that would violate some invariants temporarily)
-                    mi_segment_reclaim(segment, heap, 0, out _, tld);
+                    _ = mi_segment_reclaim(segment, heap, 0, out _, tld);
                 }
                 else if (has_page && segment->page_kind == page_kind)
                 {
@@ -1696,7 +1695,7 @@ namespace TerraFX.Interop
                 else if (segment->abandoned_visits >= 3)
                 {
                     // always reclaim on 3rd visit to limit the list length.
-                    mi_segment_reclaim(segment, heap, 0, out _, tld);
+                    _ = mi_segment_reclaim(segment, heap, 0, out _, tld);
                 }
                 else
                 {
@@ -1722,7 +1721,7 @@ namespace TerraFX.Interop
 
             if (segment != null)
             {
-                mi_segment_init(segment, 0, page_kind, page_shift, tld, os_tld);
+                _ = mi_segment_init(segment, 0, page_kind, page_shift, tld, os_tld);
                 return segment;
             }
 

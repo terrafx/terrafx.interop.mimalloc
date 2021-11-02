@@ -387,7 +387,7 @@ namespace TerraFX.Interop
         [NativeTypeName("std::atomic<uintptr_t>")]
         private static volatile nuint large_page_try_ok = 0;
 
-        private static bool mi_huge_pages_available = IsUnix ? (MAP_HUGE_1GB != 0) : true;
+        private static bool mi_huge_pages_available = !IsUnix || (MAP_HUGE_1GB != 0);
 
         [NativeTypeName("std::atomic<uintptr_t>")]
         private static volatile nuint advice = (nuint)MADV_FREE;
