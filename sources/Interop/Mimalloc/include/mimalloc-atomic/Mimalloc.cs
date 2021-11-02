@@ -99,11 +99,11 @@ namespace TerraFX.Interop
 
             if (Environment.Is64BitProcess)
             {
-                Interlocked.Add(ref Unsafe.As<nuint, ulong>(ref p), add);
+                _ = Interlocked.Add(ref Unsafe.As<nuint, ulong>(ref p), add);
             }
             else
             {
-                Interlocked.Add(ref Unsafe.As<nuint, uint>(ref p), (uint)add);
+                _ = Interlocked.Add(ref Unsafe.As<nuint, uint>(ref p), (uint)add);
             }
 
             return value;
@@ -189,7 +189,7 @@ namespace TerraFX.Interop
         private static void mi_atomic_thread_fence(mi_memory_order_t mo)
         {
             nuint x = 0;
-            mi_atomic_exchange_explicit(ref x, 1, mo);
+            _ = mi_atomic_exchange_explicit(ref x, 1, mo);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -230,7 +230,7 @@ namespace TerraFX.Interop
             }
             else
             {
-                mi_atomic_exchange_explicit(ref p, x, mo);
+                _ = mi_atomic_exchange_explicit(ref p, x, mo);
             }
         }
 
@@ -270,7 +270,7 @@ namespace TerraFX.Interop
             }
             else
             {
-                Interlocked.Exchange(ref p, x);
+                _ = Interlocked.Exchange(ref p, x);
             }
         }
 

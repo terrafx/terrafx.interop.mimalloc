@@ -189,7 +189,7 @@ namespace TerraFX.Interop
 
             if (idx >= MI_REGION_MAX)
             {
-                mi_atomic_decrement_acq_rel(ref regions_count);
+                _ = mi_atomic_decrement_acq_rel(ref regions_count);
 
                 _mi_arena_free(start, MI_REGION_SIZE, arena_memid, region_commit, ref *tld->stats);
                 _mi_warning_message("maximum regions used: {0} GiB (perhaps recompile with a larger setting for MI_HEAP_REGION_MAX_SIZE)", _mi_divide_up(MI_HEAP_REGION_MAX_SIZE, GiB));
@@ -212,7 +212,7 @@ namespace TerraFX.Interop
 
             bit_idx = 0;
 
-            mi_bitmap_claim(&r->in_use, 1, blocks, bit_idx, out _);
+            _ = mi_bitmap_claim(&r->in_use, 1, blocks, bit_idx, out _);
             mi_atomic_store_ptr_release(ref r->start, start);
 
             // and share it
@@ -362,7 +362,7 @@ namespace TerraFX.Interop
             if (commit)
             {
                 // ensure commit
-                mi_bitmap_claim(&region->commit, 1, blocks, bit_idx, out bool any_uncommitted);
+                _ = mi_bitmap_claim(&region->commit, 1, blocks, bit_idx, out bool any_uncommitted);
 
                 if (any_uncommitted)
                 {
@@ -371,7 +371,7 @@ namespace TerraFX.Interop
                     if (!_mi_mem_commit(p, blocks * MI_SEGMENT_SIZE, out bool commit_zero, tld))
                     {
                         // failed to commit! unclaim and return
-                        mi_bitmap_unclaim(&region->in_use, 1, blocks, bit_idx);
+                        _ = mi_bitmap_unclaim(&region->in_use, 1, blocks, bit_idx);
                         return null;
                     }
 
@@ -397,12 +397,12 @@ namespace TerraFX.Interop
                 mi_assert_internal((MI_DEBUG > 1) && (!info.x.is_large));
                 mi_assert_internal((MI_DEBUG > 1) && (!mi_option_is_enabled(mi_option_eager_commit) || commit || (mi_option_get(mi_option_eager_commit_delay) > 0)));
 
-                mi_bitmap_unclaim(&region->reset, 1, blocks, bit_idx);
+                _ = mi_bitmap_unclaim(&region->reset, 1, blocks, bit_idx);
 
                 if (commit || !mi_option_is_enabled(mi_option_reset_decommits))
                 {
                     // only if needed
-                    _mi_mem_unreset(p, blocks * MI_SEGMENT_SIZE, out bool reset_zero, tld);
+                    _ = _mi_mem_unreset(p, blocks * MI_SEGMENT_SIZE, out bool reset_zero, tld);
 
                     if (reset_zero)
                     {
@@ -541,13 +541,13 @@ namespace TerraFX.Interop
                 // committed?
                 if (full_commit && ((size % MI_SEGMENT_SIZE) == 0))
                 {
-                    mi_bitmap_claim(&region->commit, 1, blocks, bit_idx, out _);
+                    _ = mi_bitmap_claim(&region->commit, 1, blocks, bit_idx, out _);
                 }
 
                 if (any_reset)
                 {
                     // set the is_reset bits if any pages were reset
-                    mi_bitmap_claim(&region->reset, 1, blocks, bit_idx, out _);
+                    _ = mi_bitmap_claim(&region->reset, 1, blocks, bit_idx, out _);
                 }
 
                 // reset the blocks to reduce the working set.
@@ -555,13 +555,13 @@ namespace TerraFX.Interop
 
                 if (!info.x.is_large && mi_option_is_enabled(mi_option_segment_reset) && (mi_option_is_enabled(mi_option_eager_commit) || mi_option_is_enabled(mi_option_reset_decommits)))
                 {
-                    mi_bitmap_claim(&region->reset, 1, blocks, bit_idx, out bool any_unreset);
+                    _ = mi_bitmap_claim(&region->reset, 1, blocks, bit_idx, out bool any_unreset);
 
                     if (any_unreset)
                     {
                         // ensure no more pending write (in case reset = decommit)
                         _mi_abandoned_await_readers();
-                        _mi_mem_reset(p, blocks * MI_SEGMENT_SIZE, tld);
+                        _ = _mi_mem_reset(p, blocks * MI_SEGMENT_SIZE, tld);
                     }
                 }
 

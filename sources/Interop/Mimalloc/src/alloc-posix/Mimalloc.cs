@@ -146,7 +146,7 @@ namespace TerraFX.Interop
 
             if (p != null)
             {
-                memcpy(p, s, size);
+                _ = memcpy(p, s, size);
             }
             return p;
         }

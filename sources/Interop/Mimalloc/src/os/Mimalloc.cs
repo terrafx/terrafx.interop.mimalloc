@@ -100,8 +100,7 @@ namespace TerraFX.Interop
                 return true;
             }
 
-            bool err = false;
-
+            bool err;
             if (IsWindows)
             {
                 err = VirtualFree(addr, 0, MEM_RELEASE) == 0;
@@ -199,7 +198,7 @@ namespace TerraFX.Interop
                 {
                     // if a large page allocation fails, it seems the calls to VirtualAlloc get very expensive.
                     // therefore, once a large page allocation failed, we don't try again for `large_page_try_ok` times.
-                    mi_atomic_cas_strong_acq_rel(ref large_page_try_ok, ref try_ok, try_ok - 1);
+                    _ = mi_atomic_cas_strong_acq_rel(ref large_page_try_ok, ref try_ok, try_ok - 1);
                 }
                 else
                 {
@@ -305,7 +304,7 @@ namespace TerraFX.Interop
                     // enough permission, the `mmap` will always fail (but it might also fail for other reasons).
                     // Therefore, once a large page allocation failed, we don't try again for `large_page_try_ok` times
                     // to avoid too many failing calls to mmap.
-                    mi_atomic_cas_strong_acq_rel(ref large_page_try_ok, ref try_ok, try_ok - 1);
+                    _ = mi_atomic_cas_strong_acq_rel(ref large_page_try_ok, ref try_ok, try_ok - 1);
                 }
                 else
                 {
@@ -431,11 +430,11 @@ namespace TerraFX.Interop
                         nuint r = _mi_heap_random_next(mi_get_default_heap());
 
                         // (randomly 20 bits)*4MiB == 0 to 4TiB
-                        init = init + (MI_SEGMENT_SIZE * ((r >> 17) & 0xFFFFF));
+                        init += (MI_SEGMENT_SIZE * ((r >> 17) & 0xFFFFF));
                     }
 
                     nuint expected = hint + size;
-                    mi_atomic_cas_strong_acq_rel(ref aligned_base, ref expected, init);
+                    _ = mi_atomic_cas_strong_acq_rel(ref aligned_base, ref expected, init);
 
                     // this may still give 0 or > 30TiB but that is ok, it is a hint after all
                     hint = mi_atomic_add_acq_rel(ref aligned_base, size);
@@ -470,8 +469,7 @@ namespace TerraFX.Interop
                 allow_large = false;
             }
 
-            void* p = null;
-
+            void* p;
             if (IsWindows)
             {
                 uint flags = MEM_RESERVE;
@@ -534,7 +532,7 @@ namespace TerraFX.Interop
             // if not aligned, free it, overallocate, and unmap around it
             if ((nuint)p % alignment != 0)
             {
-                mi_os_mem_free(p, size, commit, ref stats);
+                _ = mi_os_mem_free(p, size, commit, ref stats);
 
                 if (size >= (SIZE_MAX - alignment))
                 {
@@ -573,13 +571,13 @@ namespace TerraFX.Interop
                         if (((nuint)p % alignment) == 0)
                         {
                             // if p happens to be aligned, just decommit the left-over area
-                            _mi_os_decommit((byte*)p + size, over_size - size, ref stats);
+                            _ = _mi_os_decommit((byte*)p + size, over_size - size, ref stats);
                             break;
                         }
                         else
                         {
                             // otherwise free and allocate at an aligned address in there
-                            mi_os_mem_free(p, over_size, commit, ref stats);
+                            _ = mi_os_mem_free(p, over_size, commit, ref stats);
 
                             void* aligned_p = mi_align_up_ptr(p, alignment);
                             p = mi_win_virtual_alloc(aligned_p, size, alignment, flags, false, allow_large, out is_large);
@@ -593,7 +591,7 @@ namespace TerraFX.Interop
                             if (p != null)
                             {
                                 // should not happen?
-                                mi_os_mem_free(p, size, commit, ref stats);
+                                _ = mi_os_mem_free(p, size, commit, ref stats);
                                 p = null;
                             }
                         }
@@ -620,12 +618,12 @@ namespace TerraFX.Interop
 
                     if (pre_size > 0)
                     {
-                        mi_os_mem_free(p, pre_size, commit, ref stats);
+                        _ = mi_os_mem_free(p, pre_size, commit, ref stats);
                     }
 
                     if (post_size > 0)
                     {
-                        mi_os_mem_free((byte*)aligned_p + mid_size, post_size, commit, ref stats);
+                        _ = mi_os_mem_free((byte*)aligned_p + mid_size, post_size, commit, ref stats);
                     }
 
                     // we can return the aligned pointer on `mmap` systems
@@ -651,9 +649,7 @@ namespace TerraFX.Interop
             }
 
             size = _mi_os_good_alloc_size(size);
-            bool is_large = false;
-
-            return mi_os_mem_alloc(size, 0, true, false, out is_large, ref stats);
+            return mi_os_mem_alloc(size, 0, true, false, out _, ref stats);
         }
 
         private static partial void _mi_os_free_ex(void* p, nuint size, bool was_committed, ref mi_stats_t tld_stats)
@@ -666,7 +662,7 @@ namespace TerraFX.Interop
             }
 
             size = _mi_os_good_alloc_size(size);
-            mi_os_mem_free(p, size, was_committed, ref stats);
+            _ = mi_os_mem_free(p, size, was_committed, ref stats);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -682,11 +678,7 @@ namespace TerraFX.Interop
             size = _mi_os_good_alloc_size(size);
             alignment = _mi_align_up(alignment, _mi_os_page_size());
 
-            bool allow_large = false;
-
-            allow_large = large;
-            large = false;
-
+            var allow_large = large;
             return mi_os_mem_alloc_aligned(size, alignment, commit, allow_large, out large, ref _mi_stats_main);
         }
 
@@ -823,7 +815,7 @@ namespace TerraFX.Interop
         private static partial bool _mi_os_decommit(void* addr, nuint size, ref mi_stats_t tld_stats)
         {
             ref mi_stats_t stats = ref _mi_stats_main;
-            return mi_os_commitx(addr, size, false, conservative: true, out bool is_zero, ref stats);
+            return mi_os_commitx(addr, size, false, conservative: true, out bool _, ref stats);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -862,7 +854,7 @@ namespace TerraFX.Interop
             if ((MI_DEBUG > 1) && (MI_SECURE == 0))
             {
                 // pretend it is eagerly reset
-                memset(start, 0, csize);
+                _ = memset(start, 0, csize);
             }
 
             if (IsWindows)
@@ -875,7 +867,7 @@ namespace TerraFX.Interop
                 if ((p == start) && (start != null))
                 {
                     // VirtualUnlock after MEM_RESET removes the memory from the working set
-                    VirtualUnlock(start, csize);
+                    _ = VirtualUnlock(start, csize);
                 }
 
                 if (p != start)
@@ -964,8 +956,7 @@ namespace TerraFX.Interop
                 return false;
             }
 
-            int err = 0;
-
+            int err;
             if (IsWindows)
             {
                 uint oldprotect = 0;
@@ -1157,10 +1148,10 @@ namespace TerraFX.Interop
             if (Environment.Is64BitProcess)
             {
                 nuint size = pages * MI_HUGE_OS_PAGE_SIZE;
-
-                nuint start = 0;
-                nuint end = 0;
                 nuint huge_start = mi_atomic_load_relaxed(ref mi_huge_start);
+
+                nuint start;
+                nuint end;
 
                 do
                 {
@@ -1178,7 +1169,7 @@ namespace TerraFX.Interop
                             nuint r = _mi_heap_random_next(mi_get_default_heap());
 
                             // (randomly 12bits)*1GiB == between 0 to 4TiB
-                            start = start + (MI_HUGE_OS_PAGE_SIZE * ((r >> 17) & 0x0FFF));
+                            start += (MI_HUGE_OS_PAGE_SIZE * ((r >> 17) & 0x0FFF));
                         }
                     }
 
@@ -1343,7 +1334,7 @@ namespace TerraFX.Interop
             if (IsWindows)
             {
                 uint numa_max = 0;
-                GetNumaHighestNodeNumber(&numa_max);
+                _ = GetNumaHighestNodeNumber(&numa_max);
 
                 // find the highest node number that has actual processors assigned to it. Issue #282
                 while (numa_max > 0)
@@ -1411,7 +1402,7 @@ namespace TerraFX.Interop
 
             if (numa_node >= numa_count)
             {
-                numa_node = numa_node % numa_count;
+                numa_node %= numa_count;
             }
 
             return (int)numa_node;

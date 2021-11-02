@@ -775,7 +775,7 @@ namespace TerraFX.Interop
                 return;
             }
 
-            _mi_page_start(_mi_page_segment(page), page, out nuint page_size);
+            _ = _mi_page_start(_mi_page_segment(page), page, out nuint page_size);
             mi_stat_counter_increase(ref tld->stats.pages_extended, 1);
 
             // calculate the extend count
@@ -835,7 +835,7 @@ namespace TerraFX.Interop
             // set fields
             mi_page_set_heap(page, heap);
 
-            _mi_segment_page_start(segment, page, block_size, out nuint page_size, out _);
+            _ = _mi_segment_page_start(segment, page, block_size, out nuint page_size, out _);
             page->xblock_size = (block_size < MI_HUGE_BLOCK_SIZE) ? (uint)block_size : MI_HUGE_BLOCK_SIZE;
 
             mi_assert_internal((MI_DEBUG > 1) && (page_size / block_size < (1 << 16)));

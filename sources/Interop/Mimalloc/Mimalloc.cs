@@ -205,7 +205,7 @@ namespace TerraFX.Interop
                         }
                     }
 
-                    CloseHandle(token);
+                    _ = CloseHandle(token);
                 }
 
                 if (!ok)
@@ -443,9 +443,7 @@ namespace TerraFX.Interop
 
         private static IntPtr OnDllImport(string libraryName, Assembly assembly, DllImportSearchPath? searchPath)
         {
-            IntPtr nativeLibrary;
-
-            if (TryResolveLibrary(libraryName, assembly, searchPath, out nativeLibrary))
+            if (TryResolveLibrary(libraryName, assembly, searchPath, out var nativeLibrary))
             {
                 return nativeLibrary;
             }

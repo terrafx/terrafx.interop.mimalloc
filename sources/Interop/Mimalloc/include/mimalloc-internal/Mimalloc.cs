@@ -322,7 +322,6 @@ namespace TerraFX.Interop
             }
             else
             {
-                Unsafe.SkipInit(out total);
                 return false;
             }
         }
@@ -446,7 +445,7 @@ namespace TerraFX.Interop
             }
             else
             {
-                _mi_segment_page_start(_mi_page_segment(page), page, bsize, out nuint psize, out _);
+                _ = _mi_segment_page_start(_mi_page_segment(page), page, bsize, out nuint psize, out _);
                 return psize;
             }
         }
@@ -796,6 +795,6 @@ namespace TerraFX.Interop
 
         // We use the .NET thread id rather than porting the native implementation
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static nuint _mi_thread_id() => (nuint)Thread.CurrentThread.ManagedThreadId;
+        private static nuint _mi_thread_id() => (nuint)Environment.CurrentManagedThreadId;
     }
 }

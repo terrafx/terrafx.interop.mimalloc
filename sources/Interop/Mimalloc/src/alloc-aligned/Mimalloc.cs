@@ -202,11 +202,11 @@ namespace TerraFX.Interop
                         {
                             // also set last word in the previous allocation to zero to ensure any padding is zero-initialized
                             nuint start = size >= SizeOf<nuint>() ? size - SizeOf<nuint>() : 0;
-                            memset((byte*)newp + start, 0, newsize - start);
+                            _ = memset((byte*)newp + start, 0, newsize - start);
                         }
                     }
 
-                    memcpy(newp, p, (newsize > size) ? size : newsize);
+                    _ = memcpy(newp, p, (newsize > size) ? size : newsize);
 
                     // only free if successful
                     mi_free(p);

@@ -134,11 +134,11 @@ namespace TerraFX.Interop
             else if (commit)
             {
                 // arena not committed as a whole, but commit requested: ensure commit now
-                mi_bitmap_claim(arena->blocks_committed, arena->field_count, needed_bcount, bitmap_index, out bool any_uncommitted);
+                _ = mi_bitmap_claim(arena->blocks_committed, arena->field_count, needed_bcount, bitmap_index, out bool any_uncommitted);
 
                 if (any_uncommitted)
                 {
-                    _mi_os_commit(p, needed_bcount * MI_ARENA_BLOCK_SIZE, out bool commit_zero, ref *tld->stats);
+                    _ = _mi_os_commit(p, needed_bcount * MI_ARENA_BLOCK_SIZE, out bool commit_zero, ref *tld->stats);
 
                     if (commit_zero)
                     {
@@ -313,7 +313,7 @@ namespace TerraFX.Interop
 
             if (i >= MI_MAX_ARENAS)
             {
-                mi_atomic_decrement_acq_rel(ref mi_arena_count);
+                _ = mi_atomic_decrement_acq_rel(ref mi_arena_count);
                 return false;
             }
 
@@ -343,7 +343,7 @@ namespace TerraFX.Interop
 
             if (numa_node >= 0)
             {
-                numa_node = numa_node % (int)_mi_os_numa_node_count();
+                numa_node %= (int)_mi_os_numa_node_count();
             }
 
             void* p = _mi_os_alloc_huge_os_pages(pages, numa_node, (long)timeout_msecs, out nuint pages_reserved, out nuint hsize);
@@ -397,10 +397,10 @@ namespace TerraFX.Interop
             {
                 // don't use leftover bits at the end
                 nuint postidx = mi_bitmap_index_create(fields - 1, MI_BITMAP_FIELD_BITS - (nuint)post);
-                mi_bitmap_claim(&arena->blocks_inuse.e0, fields, (nuint)post, postidx, out _);
+                _ = mi_bitmap_claim(&arena->blocks_inuse.e0, fields, (nuint)post, postidx, out _);
             }
 
-            mi_arena_add(arena);
+            _ = mi_arena_add(arena);
             return 0;
 #pragma warning restore CS0420
         }

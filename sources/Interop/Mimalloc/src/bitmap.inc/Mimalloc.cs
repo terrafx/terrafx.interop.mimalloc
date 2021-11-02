@@ -261,7 +261,7 @@ namespace TerraFX.Interop
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool mi_bitmap_is_any_claimed([NativeTypeName("mi_bitmap_t")] nuint* bitmap, [NativeTypeName("size_t")] nuint bitmap_fields, [NativeTypeName("size_t")] nuint count, [NativeTypeName("mi_bitmap_index_t")] nuint bitmap_idx)
         {
-            mi_bitmap_is_claimedx(bitmap, bitmap_fields, count, bitmap_idx, out bool any_ones);
+            _ = mi_bitmap_is_claimedx(bitmap, bitmap_fields, count, bitmap_idx, out bool any_ones);
             return any_ones;
         }
     }

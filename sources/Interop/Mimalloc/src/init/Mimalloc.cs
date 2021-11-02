@@ -120,7 +120,7 @@ namespace TerraFX.Interop
             _mi_stat_decrease(ref _mi_stats_main.threads, 1);
 
             // abandon the thread local heap
-            _mi_heap_done(heap);
+            _ = _mi_heap_done(heap);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -170,7 +170,7 @@ namespace TerraFX.Interop
             if (mi_option_is_enabled(mi_option_reserve_huge_os_pages))
             {
                 nuint pages = (nuint)mi_option_get(mi_option_reserve_huge_os_pages);
-                mi_reserve_huge_os_pages_interleave(pages, 0, pages * 500);
+                _ = mi_reserve_huge_os_pages_interleave(pages, 0, pages * 500);
             }
         }
 
