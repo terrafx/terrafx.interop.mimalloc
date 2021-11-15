@@ -6,10 +6,10 @@
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using static TerraFX.Interop.mi_init_t;
-using static TerraFX.Interop.mi_option_t;
+using static TerraFX.Interop.Mimalloc.mi_init_t;
+using static TerraFX.Interop.Mimalloc.mi_option_t;
 
-namespace TerraFX.Interop
+namespace TerraFX.Interop.Mimalloc
 {
     public static unsafe partial class Mimalloc
     {

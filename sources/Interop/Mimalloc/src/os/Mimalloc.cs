@@ -5,10 +5,10 @@
 
 using System;
 using System.Runtime.CompilerServices;
-using static TerraFX.Interop.mi_option_t;
-using static TerraFX.Interop.Mimalloc.MEM_EXTENDED_PARAMETER_TYPE;
+using static TerraFX.Interop.Mimalloc.mi_option_t;
+using static TerraFX.Interop.Mimalloc.Mimalloc.MEM_EXTENDED_PARAMETER_TYPE;
 
-namespace TerraFX.Interop
+namespace TerraFX.Interop.Mimalloc
 {
     public static unsafe partial class Mimalloc
     {

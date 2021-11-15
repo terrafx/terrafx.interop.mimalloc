@@ -5,10 +5,10 @@
 
 using System;
 using System.Runtime.CompilerServices;
-using static TerraFX.Interop.mi_delayed_t;
-using static TerraFX.Interop.mi_page_kind_t;
+using static TerraFX.Interop.Mimalloc.mi_delayed_t;
+using static TerraFX.Interop.Mimalloc.mi_page_kind_t;
 
-namespace TerraFX.Interop
+namespace TerraFX.Interop.Mimalloc
 {
     public static unsafe partial class Mimalloc
     {

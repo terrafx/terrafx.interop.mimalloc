@@ -3,7 +3,7 @@
 // This file includes code based on the mi_segment_t struct from https://github.com/microsoft/mimalloc
 // The original code is Copyright © Microsoft. All rights reserved. Licensed under the MIT License (MIT).
 
-namespace TerraFX.Interop
+namespace TerraFX.Interop.Mimalloc
 {
     // Segments are large allocated memory blocks (2mb on 64 bit) from
     // the OS. Inside segments we allocated fixed size _pages_ that

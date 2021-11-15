@@ -3,7 +3,7 @@
 // This file includes code based on the mi_page_queue_t struct from https://github.com/microsoft/mimalloc
 // The original code is Copyright © Microsoft. All rights reserved. Licensed under the MIT License (MIT).
 
-namespace TerraFX.Interop
+namespace TerraFX.Interop.Mimalloc
 {
     // Pages of a certain block size are held in a queue.
     internal unsafe struct mi_page_queue_t

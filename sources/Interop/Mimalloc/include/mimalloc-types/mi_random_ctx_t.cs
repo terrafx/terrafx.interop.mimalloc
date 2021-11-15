@@ -3,7 +3,7 @@
 // This file includes code based on the mi_random_ctx_t struct from https://github.com/microsoft/mimalloc
 // The original code is Copyright © Microsoft. All rights reserved. Licensed under the MIT License (MIT).
 
-namespace TerraFX.Interop
+namespace TerraFX.Interop.Mimalloc
 {
     // Random context
     internal unsafe struct mi_random_ctx_t

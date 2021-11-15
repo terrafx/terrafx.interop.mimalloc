@@ -3,7 +3,7 @@
 // This file includes code based on the mi_padding_t struct from https://github.com/microsoft/mimalloc
 // The original code is Copyright © Microsoft. All rights reserved. Licensed under the MIT License (MIT).
 
-namespace TerraFX.Interop
+namespace TerraFX.Interop.Mimalloc
 {
     // In debug mode there is a padding stucture at the end of the blocks to check for buffer overflows
     internal struct mi_padding_t

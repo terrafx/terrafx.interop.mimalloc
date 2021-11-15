@@ -3,7 +3,7 @@
 // This file includes code based on the mi_delayed_t enum from https://github.com/microsoft/mimalloc
 // The original code is Copyright © Microsoft. All rights reserved. Licensed under the MIT License (MIT).
 
-namespace TerraFX.Interop
+namespace TerraFX.Interop.Mimalloc
 {
     // The delayed flags are used for efficient multi-threaded free-ing
     internal enum mi_delayed_t

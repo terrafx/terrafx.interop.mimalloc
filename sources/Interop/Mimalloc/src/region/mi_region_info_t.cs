@@ -5,7 +5,7 @@
 
 using System.Runtime.InteropServices;
 
-namespace TerraFX.Interop
+namespace TerraFX.Interop.Mimalloc
 {
     // Region info
     [StructLayout(LayoutKind.Explicit)]
