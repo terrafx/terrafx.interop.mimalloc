@@ -5,7 +5,7 @@
 
 using System;
 
-namespace TerraFX.Interop
+namespace TerraFX.Interop.Mimalloc
 {
     public unsafe delegate bool mi_block_visit_fun([NativeTypeName("const mi_heap_t*")] IntPtr heap, [NativeTypeName("const mi_heap_area_t*")] mi_heap_area_t* area, void* block, [NativeTypeName("size_t")] nuint block_size, void* arg);
 }

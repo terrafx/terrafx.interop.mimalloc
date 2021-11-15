@@ -4,9 +4,9 @@ using System;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using static TerraFX.Interop.mi_option_t;
+using static TerraFX.Interop.Mimalloc.mi_option_t;
 
-namespace TerraFX.Interop
+namespace TerraFX.Interop.Mimalloc
 {
     public static unsafe partial class Mimalloc
     {

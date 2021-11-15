@@ -9,7 +9,7 @@ using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 
-namespace TerraFX.Interop
+namespace TerraFX.Interop.Mimalloc
 {
     public static unsafe partial class Mimalloc
     {

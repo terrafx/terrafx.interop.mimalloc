@@ -3,7 +3,7 @@
 // This file includes code based on the mi_heap_t enum from https://github.com/microsoft/mimalloc
 // The original code is Copyright © Microsoft. All rights reserved. Licensed under the MIT License (MIT).
 
-namespace TerraFX.Interop
+namespace TerraFX.Interop.Mimalloc
 {
     // A heap owns a set of pages.
     internal unsafe struct mi_heap_t

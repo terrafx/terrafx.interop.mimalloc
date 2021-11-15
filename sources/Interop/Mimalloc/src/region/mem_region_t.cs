@@ -3,7 +3,7 @@
 // This file includes code based on the mem_region_t struct from https://github.com/microsoft/mimalloc
 // The original code is Copyright © Microsoft. All rights reserved. Licensed under the MIT License (MIT).
 
-namespace TerraFX.Interop
+namespace TerraFX.Interop.Mimalloc
 {
     // A region owns a chunk of REGION_SIZE (256MiB) (virtual) memory with
     // a bit map with one bit per MI_SEGMENT_SIZE (4MiB) block.

@@ -5,9 +5,9 @@
 
 using System;
 using NUnit.Framework;
-using static TerraFX.Interop.Mimalloc;
+using static TerraFX.Interop.Mimalloc.Mimalloc;
 
-namespace TerraFX.Interop.UnitTests
+namespace TerraFX.Interop.Mimalloc.UnitTests
 {
     /// <summary>Provides validation of the <see cref="Mimalloc" /> class.</summary>
     public static unsafe partial class MimallocTests

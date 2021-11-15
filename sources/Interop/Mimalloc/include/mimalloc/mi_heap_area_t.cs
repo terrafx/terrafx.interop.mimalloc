@@ -3,7 +3,7 @@
 // This file includes code based on the mi_heap_area_t struct from https://github.com/microsoft/mimalloc
 // The original code is Copyright © Microsoft. All rights reserved. Licensed under the MIT License (MIT).
 
-namespace TerraFX.Interop
+namespace TerraFX.Interop.Mimalloc
 {
     // An area of heap space contains blocks of a single size.
     public unsafe struct mi_heap_area_t

@@ -6,7 +6,7 @@
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
-namespace TerraFX.Interop
+namespace TerraFX.Interop.Mimalloc
 {
 
     // The `in_full` and `has_aligned` page flags are put in a union to efficiently

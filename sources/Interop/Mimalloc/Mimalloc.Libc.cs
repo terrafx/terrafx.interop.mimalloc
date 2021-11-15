@@ -3,7 +3,7 @@
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
-namespace TerraFX.Interop
+namespace TerraFX.Interop.Mimalloc
 {
     public static unsafe partial class Mimalloc
     {

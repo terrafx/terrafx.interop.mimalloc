@@ -3,7 +3,7 @@
 // This file includes code based on the mi_visit_blocks_args_t struct from https://github.com/microsoft/mimalloc
 // The original code is Copyright © Microsoft. All rights reserved. Licensed under the MIT License (MIT).
 
-namespace TerraFX.Interop
+namespace TerraFX.Interop.Mimalloc
 {
     // Just to pass arguments
     internal unsafe struct mi_visit_blocks_args_t

@@ -7,9 +7,9 @@ using System;
 using System.Runtime.CompilerServices;
 using System.Runtime.Intrinsics.X86;
 using System.Threading;
-using static TerraFX.Interop.mi_memory_order_t;
+using static TerraFX.Interop.Mimalloc.mi_memory_order_t;
 
-namespace TerraFX.Interop
+namespace TerraFX.Interop.Mimalloc
 {
     public static unsafe partial class Mimalloc
     {

@@ -3,9 +3,9 @@
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using BenchmarkDotNet.Attributes;
-using static TerraFX.Interop.Mimalloc;
+using static TerraFX.Interop.Mimalloc.Mimalloc;
 
-namespace TerraFX.Interop.Benchmarks
+namespace TerraFX.Interop.Mimalloc.Benchmarks
 {
     public unsafe class AllocatorBenchmarks
     {

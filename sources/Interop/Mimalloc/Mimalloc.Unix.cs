@@ -9,7 +9,7 @@ using System.Runtime.InteropServices;
 //  * include/sys/time.h
 //  * include/unistd.h
 
-namespace TerraFX.Interop
+namespace TerraFX.Interop.Mimalloc
 {
     public static unsafe partial class Mimalloc
     {
