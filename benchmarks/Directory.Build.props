@@ -12,7 +12,6 @@
 
   <PropertyGroup>
     <IsPackable>false</IsPackable>
-    <NoWarn>$(NoWarn);1591</NoWarn>
     <OutputType>Exe</OutputType>
     <TerraFXProjectCategory>benchmarks</TerraFXProjectCategory>
   </PropertyGroup>
@@ -20,7 +19,7 @@
   <Import Project="$(MSBuildThisFileDirectory)..\Directory.Build.props" />
 
   <ItemGroup>
-    <PackageReference Include="BenchmarkDotNet" IsImplicitlyDefined="true" PrivateAssets="all" />
+    <PackageReference Include="BenchmarkDotNet" PrivateAssets="all" />
   </ItemGroup>
 
 </Project>

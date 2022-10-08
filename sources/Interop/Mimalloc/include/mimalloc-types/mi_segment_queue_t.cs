@@ -3,13 +3,12 @@
 // This file includes code based on the mi_segment_queue_t struct from https://github.com/microsoft/mimalloc
 // The original code is Copyright © Microsoft. All rights reserved. Licensed under the MIT License (MIT).
 
-namespace TerraFX.Interop.Mimalloc
-{
-    // Queue of segments
-    internal unsafe struct mi_segment_queue_t
-    {
-        public mi_segment_t* first;
+namespace TerraFX.Interop.Mimalloc;
 
-        public mi_segment_t* last;
-    }
+// Queue of segments
+internal unsafe struct mi_segment_queue_t
+{
+    public mi_segment_t* first;
+
+    public mi_segment_t* last;
 }

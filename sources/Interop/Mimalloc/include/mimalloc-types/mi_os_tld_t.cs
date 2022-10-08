@@ -3,16 +3,15 @@
 // This file includes code based on the mi_os_tld_t struct from https://github.com/microsoft/mimalloc
 // The original code is Copyright © Microsoft. All rights reserved. Licensed under the MIT License (MIT).
 
-namespace TerraFX.Interop.Mimalloc
-{
-    // OS thread local data
-    internal unsafe struct mi_os_tld_t
-    {
-        // start point for next allocation
-        [NativeTypeName("size_t")]
-        public nuint region_idx;
+namespace TerraFX.Interop.Mimalloc;
 
-        // points to tld stats
-        public mi_stats_t* stats;
-    }
+// OS thread local data
+internal unsafe struct mi_os_tld_t
+{
+    // start point for next allocation
+    [NativeTypeName("size_t")]
+    public nuint region_idx;
+
+    // points to tld stats
+    public mi_stats_t* stats;
 }

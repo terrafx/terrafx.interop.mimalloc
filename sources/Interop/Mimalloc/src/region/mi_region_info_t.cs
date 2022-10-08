@@ -5,29 +5,28 @@
 
 using System.Runtime.InteropServices;
 
-namespace TerraFX.Interop.Mimalloc
+namespace TerraFX.Interop.Mimalloc;
+
+// Region info
+[StructLayout(LayoutKind.Explicit)]
+internal struct mi_region_info_t
 {
-    // Region info
-    [StructLayout(LayoutKind.Explicit)]
-    internal struct mi_region_info_t
+    [FieldOffset(0)]
+    [NativeTypeName("uintptr_t")]
+    public nuint value;
+
+    [FieldOffset(0)]
+    public _x_e__Struct x;
+
+    public struct _x_e__Struct
     {
-        [FieldOffset(0)]
-        [NativeTypeName("uintptr_t")]
-        public nuint value;
+        // initialized?
+        public bool valid;
 
-        [FieldOffset(0)]
-        public _x_e__Struct x;
+        // allocated in fixed large/huge OS pages
+        public bool is_large;
 
-        public struct _x_e__Struct
-        {
-            // initialized?
-            public bool valid;
-
-            // allocated in fixed large/huge OS pages
-            public bool is_large;
-
-            // the associated NUMA node (where -1 means no associated node)
-            public short numa_node;
-        }
+        // the associated NUMA node (where -1 means no associated node)
+        public short numa_node;
     }
 }
