@@ -3,31 +3,30 @@
 // This file includes code based on the mi_tld_t struct from https://github.com/microsoft/mimalloc
 // The original code is Copyright © Microsoft. All rights reserved. Licensed under the MIT License (MIT).
 
-namespace TerraFX.Interop.Mimalloc
+namespace TerraFX.Interop.Mimalloc;
+
+// Thread local data
+internal unsafe struct mi_tld_t
 {
-    // Thread local data
-    internal unsafe struct mi_tld_t
-    {
-        // monotonic heartbeat count
-        [NativeTypeName("unsigned long long")]
-        public ulong heartbeat;
+    // monotonic heartbeat count
+    [NativeTypeName("unsigned long long")]
+    public ulong heartbeat;
 
-        // true if deferred was called; used to prevent infinite recursion.
-        public bool recurse;
+    // true if deferred was called; used to prevent infinite recursion.
+    public bool recurse;
 
-        // backing heap of this thread (cannot be deleted)
-        public mi_heap_t* heap_backing;
+    // backing heap of this thread (cannot be deleted)
+    public mi_heap_t* heap_backing;
 
-        // list of heaps in this thread (so we can abandon all when the thread terminates)
-        public mi_heap_t* heaps;
+    // list of heaps in this thread (so we can abandon all when the thread terminates)
+    public mi_heap_t* heaps;
 
-        // segment tld
-        public mi_segments_tld_t segments;
+    // segment tld
+    public mi_segments_tld_t segments;
 
-        // os tld
-        public mi_os_tld_t os;
+    // os tld
+    public mi_os_tld_t os;
 
-        // statistics
-        public mi_stats_t stats;
-    }
+    // statistics
+    public mi_stats_t stats;
 }

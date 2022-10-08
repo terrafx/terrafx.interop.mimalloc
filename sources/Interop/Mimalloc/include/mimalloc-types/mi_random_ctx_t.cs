@@ -3,17 +3,16 @@
 // This file includes code based on the mi_random_ctx_t struct from https://github.com/microsoft/mimalloc
 // The original code is Copyright © Microsoft. All rights reserved. Licensed under the MIT License (MIT).
 
-namespace TerraFX.Interop.Mimalloc
+namespace TerraFX.Interop.Mimalloc;
+
+// Random context
+internal unsafe struct mi_random_ctx_t
 {
-    // Random context
-    internal unsafe struct mi_random_ctx_t
-    {
-        [NativeTypeName("uint32_t [16]")]
-        public fixed uint input[16];
+    [NativeTypeName("uint32_t [16]")]
+    public fixed uint input[16];
 
-        [NativeTypeName("uint32_t [16]")]
-        public fixed uint output[16];
+    [NativeTypeName("uint32_t [16]")]
+    public fixed uint output[16];
 
-        public int output_available;
-    }
+    public int output_available;
 }

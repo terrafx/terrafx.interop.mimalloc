@@ -3,14 +3,13 @@
 // This file includes code based on the mi_collect_t enum from https://github.com/microsoft/mimalloc
 // The original code is Copyright © Microsoft. All rights reserved. Licensed under the MIT License (MIT).
 
-namespace TerraFX.Interop.Mimalloc
+namespace TerraFX.Interop.Mimalloc;
+
+internal enum mi_collect_t
 {
-    internal enum mi_collect_t
-    {
-        MI_NORMAL,
+    MI_NORMAL,
 
-        MI_FORCE,
+    MI_FORCE,
 
-        MI_ABANDON
-    }
+    MI_ABANDON
 }

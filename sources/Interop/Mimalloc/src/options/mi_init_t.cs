@@ -3,17 +3,16 @@
 // This file includes code based on the mi_init_t enum from https://github.com/microsoft/mimalloc
 // The original code is Copyright © Microsoft. All rights reserved. Licensed under the MIT License (MIT).
 
-namespace TerraFX.Interop.Mimalloc
+namespace TerraFX.Interop.Mimalloc;
+
+internal enum mi_init_t
 {
-    internal enum mi_init_t
-    {
-        // not yet initialized
-        UNINIT,
+    // not yet initialized
+    UNINIT,
 
-        // not found in the environment, use default value
-        DEFAULTED,
+    // not found in the environment, use default value
+    DEFAULTED,
 
-        // found in environment or set explicitly
-        INITIALIZED,
-    }
+    // found in environment or set explicitly
+    INITIALIZED,
 }
