@@ -11,7 +11,9 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".root", ".root", "{2F337CB6
 		build.sh = build.sh
 		Directory.Build.props = Directory.Build.props
 		Directory.Build.targets = Directory.Build.targets
+		Directory.Packages.props = Directory.Packages.props
 		LICENSE.md = LICENSE.md
+		NuGet.config = NuGet.config
 		pack.cmd = pack.cmd
 		pack.sh = pack.sh
 		restore.cmd = restore.cmd
@@ -23,10 +25,9 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".root", ".root", "{2F337CB6
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{8793898A-6542-4606-AA82-AB14151D2D20}"
 	ProjectSection(SolutionItems) = preProject
-		docs\CODE_OF_CONDUCT.md = docs\CODE_OF_CONDUCT.md
 		docs\CODEOWNERS = docs\CODEOWNERS
+		docs\CODE_OF_CONDUCT.md = docs\CODE_OF_CONDUCT.md
 		docs\CONTRIBUTING.md = docs\CONTRIBUTING.md
-		docs\ISSUE_TEMPLATE.md = docs\ISSUE_TEMPLATE.md
 		docs\PULL_REQUEST_TEMPLATE.md = docs\PULL_REQUEST_TEMPLATE.md
 		docs\README.md = docs\README.md
 	EndProjectSection
@@ -94,6 +95,13 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Mimalloc", "Mimalloc", "{D4
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TerraFX.Interop.Mimalloc.Benchmarks", "benchmarks\Interop\Mimalloc\TerraFX.Interop.Mimalloc.Benchmarks.csproj", "{7FE0104E-1D3C-4175-8B87-1B87F49B488B}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ISSUE_TEMPLATE", "ISSUE_TEMPLATE", "{46ABE96B-93E3-4853-8FB0-0EF0709C3084}"
+	ProjectSection(SolutionItems) = preProject
+		.github\ISSUE_TEMPLATE\bug.md = .github\ISSUE_TEMPLATE\bug.md
+		.github\ISSUE_TEMPLATE\proposal.md = .github\ISSUE_TEMPLATE\proposal.md
+		.github\ISSUE_TEMPLATE\regression.md = .github\ISSUE_TEMPLATE\regression.md
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -128,6 +136,7 @@ Global
 		{F359966E-F75B-4FE2-9B32-191DA1A5430C} = {F5A2F613-4AF4-4B25-A682-EB51DB0AA247}
 		{D450790D-4285-4A7E-894C-0292E2C16594} = {F359966E-F75B-4FE2-9B32-191DA1A5430C}
 		{7FE0104E-1D3C-4175-8B87-1B87F49B488B} = {D450790D-4285-4A7E-894C-0292E2C16594}
+		{46ABE96B-93E3-4853-8FB0-0EF0709C3084} = {14317A6D-D419-404D-A4A9-E64088152E32}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {2FE36DF8-2D9C-4F20-8787-45DC74B57461}
