@@ -57,3 +57,7 @@ target framework.
 
 See more detailed benchmarks: [**raw**](./../docs/benchmarks/BenchmarkResultsRaw.md),
 [**interpreted**](./../docs/benchmarks/BenchmarkResultsInterpreted.md).
+
+### .NET Foundation
+
+This project is supported by the [.NET Foundation](https://dotnetfoundation.org).
