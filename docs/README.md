@@ -1,6 +1,6 @@
 # TerraFX.Interop.Mimalloc
 
-Interop bindings for mimalloc.
+Managed reimplementation of [mimalloc](https://github.com/microsoft/mimalloc).
 
 ![ci](https://github.com/terrafx/terrafx.interop.mimalloc/workflows/ci/badge.svg?branch=main&event=push)
 [![Discord](https://img.shields.io/discord/593547387457372212.svg?label=Discord&style=plastic)](https://discord.terrafx.dev/)
