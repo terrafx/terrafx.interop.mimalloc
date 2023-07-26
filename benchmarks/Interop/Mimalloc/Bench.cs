@@ -54,7 +54,7 @@ public unsafe class AllocatorBenchmarks
         {
             var p = (byte*)Marshal.AllocHGlobal(Size);
             Consume(&p);
-            Marshal.FreeHGlobal((System.IntPtr)p);
+            Marshal.FreeHGlobal((nint)p);
         }
     }
     
