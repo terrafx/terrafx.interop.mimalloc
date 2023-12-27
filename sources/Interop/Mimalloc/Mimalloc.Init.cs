@@ -2,7 +2,6 @@
 
 using System;
 using System.Runtime.InteropServices;
-using System.Threading;
 using static TerraFX.Interop.Mimalloc.mi_init_t;
 using static TerraFX.Interop.Mimalloc.mi_option_t;
 
@@ -74,7 +73,7 @@ public static unsafe partial class Mimalloc
 
     private static readonly int HUGETLB_FLAG_ENCODE_SHIFT = IsLinux ? 26 : 0;
 
-    private static readonly int RUSAGE_SELF = 0;
+    private const int RUSAGE_SELF = 0;
 
     private static readonly int MADV_DONTNEED = IsUnix ? 4 : 0;
 
@@ -82,9 +81,9 @@ public static unsafe partial class Mimalloc
 
     private static readonly int MADV_HUGEPAGE = IsLinux ? 14 : 0;
 
-    private static readonly int MAP_ANON = MAP_ANONYMOUS;
-
     private static readonly int MAP_ANONYMOUS = IsLinux ? 0x20 : (IsMacOS ? 0x1000 : 0);
+
+    // private static readonly int MAP_ANON = MAP_ANONYMOUS;
 
     private static readonly void* MAP_FAILED = unchecked((void*)-1);
 
@@ -102,13 +101,13 @@ public static unsafe partial class Mimalloc
 
     private static readonly nuint MPOL_PREFERRED = IsLinux ? 1u : 0u;
 
-    private static readonly int PROT_NONE = 0x0;
+    private const int PROT_NONE = 0x0;
 
     private static readonly int PROT_READ = IsUnix ? 0x1 : 0;
 
     private static readonly int PROT_WRITE = IsUnix ? 0x2 : 0;
 
-    private static readonly int R_OK = IsUnix ? 4 : 0;
+    // private static readonly int R_OK = IsUnix ? 4 : 0;
 
     private static readonly int SUPERPAGE_SIZE_2MB = IsMacOS ? 2 : 0;
 
@@ -163,7 +162,7 @@ public static unsafe partial class Mimalloc
     private static readonly int MI_INTPTR_SHIFT = Environment.Is64BitProcess ? 3 : 2;
 
     private static readonly nuint MI_INTPTR_SIZE = (nuint)1 << MI_INTPTR_SHIFT;
-    private static readonly nuint MI_INTPTR_BITS = MI_INTPTR_SIZE * 8;
+    // private static readonly nuint MI_INTPTR_BITS = MI_INTPTR_SIZE * 8;
 
     // Main tuning parameters for segment and page sizes
     // Sizes for 64-bit, divide by two for 32-bit
@@ -183,8 +182,8 @@ public static unsafe partial class Mimalloc
     private static readonly nuint MI_LARGE_PAGE_SIZE = (nuint)1 << MI_LARGE_PAGE_SHIFT;
 
     private static readonly nuint MI_SMALL_PAGES_PER_SEGMENT = MI_SEGMENT_SIZE / MI_SMALL_PAGE_SIZE;
-    private static readonly nuint MI_MEDIUM_PAGES_PER_SEGMENT = MI_SEGMENT_SIZE / MI_MEDIUM_PAGE_SIZE;
-    private static readonly nuint MI_LARGE_PAGES_PER_SEGMENT = MI_SEGMENT_SIZE / MI_LARGE_PAGE_SIZE;
+    // private static readonly nuint MI_MEDIUM_PAGES_PER_SEGMENT = MI_SEGMENT_SIZE / MI_MEDIUM_PAGE_SIZE;
+    // private static readonly nuint MI_LARGE_PAGES_PER_SEGMENT = MI_SEGMENT_SIZE / MI_LARGE_PAGE_SIZE;
 
     // The max object size are checked to not waste more than 12.5% internally over the page sizes.
     // (Except for large pages since huge objects are allocated in 4MiB chunks)
@@ -309,7 +308,7 @@ public static unsafe partial class Mimalloc
     // may lead to allocation itself on some platforms)
     // --------------------------------------------------------
 
-    private static mi_stats_t _mi_stats_main = default;
+    private static mi_stats_t _mi_stats_main;
 
     private static readonly mi_heap_t._pages_free_direct_e__FixedBuffer* _mi_heap_empty_pages_free_direct = create_mi_heap_empty_pages_free_direct();
 
@@ -377,8 +376,8 @@ public static unsafe partial class Mimalloc
     private static readonly nuint os_page_size = get_os_page_size();
 
     // minimal allocation granularity
-    [NativeTypeName("size_t")]
-    private static readonly nuint os_alloc_granularity = get_os_alloc_granularity();
+    // [NativeTypeName("size_t")]
+    // private static readonly nuint os_alloc_granularity = get_os_alloc_granularity();
 
     // if non-zero, use large page allocation
     [NativeTypeName("size_t")]

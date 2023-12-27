@@ -6,7 +6,6 @@
 using System;
 using System.Numerics;
 using System.Runtime.CompilerServices;
-using System.Threading;
 using static TerraFX.Interop.Mimalloc.mi_delayed_t;
 using static TerraFX.Interop.Mimalloc.mi_page_kind_t;
 
@@ -23,7 +22,7 @@ public static unsafe partial class Mimalloc
         }
     }
 
-    private const ushort MI_CACHE_LINE = 64;
+    // private const ushort MI_CACHE_LINE = 64;
 
     // "options.c"
 
