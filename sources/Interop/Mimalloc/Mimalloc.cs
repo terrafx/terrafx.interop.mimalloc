@@ -6,6 +6,8 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using static TerraFX.Interop.Mimalloc.mi_option_t;
 
+[assembly: DefaultDllImportSearchPaths(DllImportSearchPath.SafeDirectories)]
+
 namespace TerraFX.Interop.Mimalloc;
 
 public static unsafe partial class Mimalloc
@@ -447,7 +449,7 @@ public static unsafe partial class Mimalloc
             return nativeLibrary;
         }
 
-        if (libraryName.Equals("libc") && TryResolveLibc(assembly, searchPath, out nativeLibrary))
+        if (libraryName.Equals("libc", StringComparison.OrdinalIgnoreCase) && TryResolveLibc(assembly, searchPath, out nativeLibrary))
         {
             return nativeLibrary;
         }

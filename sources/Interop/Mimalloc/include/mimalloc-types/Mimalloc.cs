@@ -3,7 +3,6 @@
 // This file includes code based on the mimalloc-internal.h file from https://github.com/microsoft/mimalloc
 // The original code is Copyright © Microsoft. All rights reserved. Licensed under the MIT License (MIT).
 
-using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 namespace TerraFX.Interop.Mimalloc;

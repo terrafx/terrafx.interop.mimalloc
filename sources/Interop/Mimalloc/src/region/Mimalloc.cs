@@ -3,7 +3,6 @@
 // This file includes code based on the region.c file from https://github.com/microsoft/mimalloc
 // The original code is Copyright © Microsoft. All rights reserved. Licensed under the MIT License (MIT).
 
-using System;
 using System.Runtime.CompilerServices;
 using static TerraFX.Interop.Mimalloc.mi_option_t;
 

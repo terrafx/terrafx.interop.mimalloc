@@ -302,7 +302,7 @@ public static unsafe partial class Mimalloc
 
         if (s is not null)
         {
-            switch (s.ToUpper())
+            switch (s.ToUpperInvariant())
             {
                 case "":
                 case "1":
@@ -341,7 +341,7 @@ public static unsafe partial class Mimalloc
                 }
             }
 
-            mi_assert_internal((MI_DEBUG > 1) && (desc.init != UNINIT));
+            // mi_assert_internal((MI_DEBUG > 1) && (desc.init != UNINIT));
         }
         else
         {
