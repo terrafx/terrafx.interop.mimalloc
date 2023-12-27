@@ -48,7 +48,7 @@
     <PackageValidationBaselineVersion>1.6.7</PackageValidationBaselineVersion>
     <Product>TerraFX.Interop.Mimalloc</Product>
     <RootNamespace>TerraFX.Interop</RootNamespace>
-    <VersionPrefix>1.6.7</VersionPrefix>
+    <VersionPrefix>1.6.7.1</VersionPrefix>
     <VersionSuffix Condition="'$(EXCLUDE_SUFFIX_FROM_VERSION)' != 'true'">rc1</VersionSuffix>
     <VersionSuffix Condition="'$(GITHUB_EVENT_NAME)' == 'pull_request'">pr</VersionSuffix>
   </PropertyGroup>
