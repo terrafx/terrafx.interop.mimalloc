@@ -52,7 +52,7 @@ internal unsafe struct mi_page_t
     [NativeTypeName("uint8_t : 1")]
     public bool segment_in_use
     {
-        get
+        readonly get
         {
             return (_bitfield1 & 0x1u) != 0;
         }
@@ -67,7 +67,7 @@ internal unsafe struct mi_page_t
     [NativeTypeName("uint8_t : 1")]
     public bool is_reset
     {
-        get
+        readonly get
         {
             return ((_bitfield1 >> 1) & 0x1u) != 0;
         }
@@ -82,7 +82,7 @@ internal unsafe struct mi_page_t
     [NativeTypeName("uint8_t : 1")]
     public bool is_committed
     {
-        get
+        readonly get
         {
             return ((_bitfield1 >> 2) & 0x1u) != 0;
         }
@@ -97,7 +97,7 @@ internal unsafe struct mi_page_t
     [NativeTypeName("uint8_t : 1")]
     public bool is_zero_init
     {
-        get
+        readonly get
         {
             return ((_bitfield1 >> 3) & 0x1u) != 0;
         }
@@ -127,7 +127,7 @@ internal unsafe struct mi_page_t
     [NativeTypeName("uint8_t : 1")]
     public bool is_zero
     {
-        get
+        readonly get
         {
             return (_bitfield2 & 0x1u) != 0;
         }
@@ -142,7 +142,7 @@ internal unsafe struct mi_page_t
     [NativeTypeName("uint8_t : 7")]
     public byte retire_expire
     {
-        get
+        readonly get
         {
             return (byte)((_bitfield2 >> 1) & 0x7Fu);
         }

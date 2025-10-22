@@ -45,7 +45,6 @@
     <IsAotCompatible>true</IsAotCompatible>
     <EnforceCodeStyleInBuild>false</EnforceCodeStyleInBuild>
     <PackageOutputPath>$(BaseArtifactsPath)pkg/$(Configuration)/</PackageOutputPath>
-    <PackageValidationBaselineVersion>1.6.7</PackageValidationBaselineVersion>
     <Product>TerraFX.Interop.Mimalloc</Product>
     <RootNamespace>TerraFX.Interop</RootNamespace>
     <VersionPrefix>1.6.7.1</VersionPrefix>

@@ -207,7 +207,7 @@ public static unsafe partial class Mimalloc
             [NativeTypeName("DWORD64 : 8")]
             public ulong Type
             {
-                get
+                readonly get
                 {
                     return _bitfield & 0xFFUL;
                 }
@@ -221,7 +221,7 @@ public static unsafe partial class Mimalloc
             [NativeTypeName("DWORD64 : 56")]
             public ulong Reserved
             {
-                get
+                readonly get
                 {
                     return (_bitfield >> 8) & 0xFFFFFFUL;
                 }

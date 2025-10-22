@@ -44,7 +44,7 @@ public static unsafe partial class Mimalloc
     private static partial void _mi_assert_fail([NativeTypeName("const char*")] string assertion, [NativeTypeName("const char*")] string fname, [NativeTypeName("unsigned")] uint line, [NativeTypeName("const char*")] string func);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static void mi_assert(bool expr, [CallerArgumentExpression("expr")] string assertion = "", [CallerFilePath] string fname = "", [CallerLineNumber] uint line = 0, [CallerMemberName] string func = "")
+    private static void mi_assert(bool expr, [CallerArgumentExpression(nameof(expr))] string assertion = "", [CallerFilePath] string fname = "", [CallerLineNumber] uint line = 0, [CallerMemberName] string func = "")
     {
         if ((MI_DEBUG != 0) && !expr)
         {
@@ -53,7 +53,7 @@ public static unsafe partial class Mimalloc
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static void mi_assert_internal(bool expr, [CallerArgumentExpression("expr")] string assertion = "", [CallerFilePath] string fname = "", [CallerLineNumber] uint line = 0, [CallerMemberName] string func = "")
+    private static void mi_assert_internal(bool expr, [CallerArgumentExpression(nameof(expr))] string assertion = "", [CallerFilePath] string fname = "", [CallerLineNumber] uint line = 0, [CallerMemberName] string func = "")
     {
         if (MI_DEBUG > 1)
         {
@@ -62,7 +62,7 @@ public static unsafe partial class Mimalloc
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static void mi_assert_expensive(bool expr, [CallerArgumentExpression("expr")] string assertion = "", [CallerFilePath] string fname = "", [CallerLineNumber] uint line = 0, [CallerMemberName] string func = "")
+    private static void mi_assert_expensive(bool expr, [CallerArgumentExpression(nameof(expr))] string assertion = "", [CallerFilePath] string fname = "", [CallerLineNumber] uint line = 0, [CallerMemberName] string func = "")
     {
         if (MI_DEBUG > 2)
         {

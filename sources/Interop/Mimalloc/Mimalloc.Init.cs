@@ -216,7 +216,7 @@ public static unsafe partial class Mimalloc
     // is ok since they resolve to the same value.
     // --------------------------------------------------------
 
-    private static readonly mi_option_desc_t[] options = new mi_option_desc_t[(int)_mi_option_last] {
+    private static readonly mi_option_desc_t[] options = [
         // stable options
 
         new mi_option_desc_t { value = ((MI_DEBUG != 0) || (MI_SHOW_ERRORS != 0)) ? 1 : 0, init = UNINIT, option = mi_option_show_errors, name = "show_errors" },
@@ -266,7 +266,7 @@ public static unsafe partial class Mimalloc
 
         // maximum errors that are output
         new mi_option_desc_t { value = 16,  init = UNINIT, option = mi_option_max_errors, name = "max_errors" }
-    };
+    ];
 
     // stop outputting errors after this
     [NativeTypeName("uintptr_t")]
