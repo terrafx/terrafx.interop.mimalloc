@@ -1,0 +1,77 @@
+<Solution>
+  <Folder Name="/.github/" />
+  <Folder Name="/.github/ISSUE_TEMPLATE/">
+    <File Path=".github/ISSUE_TEMPLATE/bug.md" />
+    <File Path=".github/ISSUE_TEMPLATE/proposal.md" />
+    <File Path=".github/ISSUE_TEMPLATE/regression.md" />
+  </Folder>
+  <Folder Name="/.github/workflows/">
+    <File Path=".github/workflows/ci.yml" />
+  </Folder>
+  <Folder Name="/.root/">
+    <File Path=".editorconfig" />
+    <File Path=".gitattributes" />
+    <File Path=".gitignore" />
+    <File Path="build.cmd" />
+    <File Path="build.sh" />
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Build.targets" />
+    <File Path="Directory.Packages.props" />
+    <File Path="exclusion.dic" />
+    <File Path="global.json" />
+    <File Path="LICENSE.md" />
+    <File Path="NuGet.config" />
+    <File Path="pack.cmd" />
+    <File Path="pack.sh" />
+    <File Path="restore.cmd" />
+    <File Path="restore.sh" />
+    <File Path="TerraFX.snk" />
+    <File Path="test.cmd" />
+    <File Path="test.sh" />
+  </Folder>
+  <Folder Name="/benchmarks/">
+    <File Path="benchmarks/Directory.Build.props" />
+    <File Path="benchmarks/Directory.Build.targets" />
+  </Folder>
+  <Folder Name="/benchmarks/Interop/" />
+  <Folder Name="/benchmarks/Interop/Mimalloc/">
+    <Project Path="benchmarks/Interop/Mimalloc/TerraFX.Interop.Mimalloc.Benchmarks.csproj" />
+  </Folder>
+  <Folder Name="/docs/">
+    <File Path="docs/CODEOWNERS" />
+    <File Path="docs/CODE_OF_CONDUCT.md" />
+    <File Path="docs/CONTRIBUTING.md" />
+    <File Path="docs/PULL_REQUEST_TEMPLATE.md" />
+    <File Path="docs/README.md" />
+  </Folder>
+  <Folder Name="/docs/benchmarks/">
+    <File Path="docs/benchmarks/BenchmarkResultsInterpreted.md" />
+    <File Path="docs/benchmarks/BenchmarkResultsRaw.md" />
+  </Folder>
+  <Folder Name="/scripts/">
+    <File Path="scripts/build.ps1" />
+    <File Path="scripts/build.sh" />
+    <File Path="scripts/cibuild.cmd" />
+    <File Path="scripts/cibuild.sh" />
+  </Folder>
+  <Folder Name="/sources/">
+    <File Path="sources/Directory.Build.props" />
+    <File Path="sources/Directory.Build.targets" />
+  </Folder>
+  <Folder Name="/sources/Interop/">
+    <File Path="sources/Interop/.editorconfig" />
+  </Folder>
+  <Folder Name="/sources/Interop/Mimalloc/">
+    <Project Path="sources/Interop/Mimalloc/TerraFX.Interop.Mimalloc.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <File Path="tests/Directory.Build.props" />
+    <File Path="tests/Directory.Build.targets" />
+  </Folder>
+  <Folder Name="/tests/Interop/">
+    <File Path="tests/Interop/.editorconfig" />
+  </Folder>
+  <Folder Name="/tests/Interop/Mimalloc/">
+    <Project Path="tests/Interop/Mimalloc/TerraFX.Interop.Mimalloc.UnitTests.csproj" />
+  </Folder>
+</Solution>

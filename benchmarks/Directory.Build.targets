@@ -12,4 +12,10 @@
 
   <Import Project="$(MSBuildThisFileDirectory)..\Directory.Build.targets" />
 
+  <!-- Settings that append the existing setting value -->
+  <PropertyGroup>
+    <!-- CA1515: Consider making public types internal -->
+    <NoWarn>$(NoWarn);CA1515</NoWarn>
+  </PropertyGroup>
+
 </Project>

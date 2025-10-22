@@ -27,7 +27,7 @@ internal struct mi_page_flags_t
         [NativeTypeName("uint8_t : 1")]
         public bool in_full
         {
-            get
+            readonly get
             {
                 return (_bitfield & 0x1u) != 0;
             }
@@ -42,7 +42,7 @@ internal struct mi_page_flags_t
         [NativeTypeName("uint8_t : 1")]
         public bool has_aligned
         {
-            get
+            readonly get
             {
                 return ((_bitfield >> 1) & 0x1u) != 0;
             }

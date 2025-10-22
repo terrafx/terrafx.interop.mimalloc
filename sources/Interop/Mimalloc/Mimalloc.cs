@@ -17,7 +17,10 @@ public static unsafe partial class Mimalloc
 
     static Mimalloc()
     {
-        NativeLibrary.SetDllImportResolver(Assembly.GetExecutingAssembly(), OnDllImport);
+        if (!Configuration.DisableResolveLibraryHook)
+        {
+            NativeLibrary.SetDllImportResolver(Assembly.GetExecutingAssembly(), OnDllImport);
+        }
 
         mi_assert_internal((MI_DEBUG > 1) && (MI_LARGE_OBJ_WSIZE_MAX < 655360));
 
