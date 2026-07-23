@@ -5,7 +5,6 @@
 
 using System;
 using System.Runtime.CompilerServices;
-using System.Runtime.Intrinsics.X86;
 using System.Threading;
 using static TerraFX.Interop.Mimalloc.mi_memory_order_t;
 
@@ -95,24 +94,20 @@ public static unsafe partial class Mimalloc
     [return: NativeTypeName("uintptr_t")]
     private static nuint mi_atomic_fetch_add_explicit([NativeTypeName("std::atomic<uintptr_t>*")] ref nuint p, [NativeTypeName("uintptr_t")] nuint add, mi_memory_order_t mo)
     {
-        nuint value = p;
-
         if (Environment.Is64BitProcess)
         {
-            _ = Interlocked.Add(ref Unsafe.As<nuint, ulong>(ref p), add);
+            return unchecked((nuint)(Interlocked.Add(ref Unsafe.As<nuint, ulong>(ref p), add) - add));
         }
         else
         {
-            _ = Interlocked.Add(ref Unsafe.As<nuint, uint>(ref p), (uint)add);
+            return unchecked(Interlocked.Add(ref Unsafe.As<nuint, uint>(ref p), (uint)add) - (uint)add);
         }
-
-        return value;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     [return: NativeTypeName("uintptr_t")]
     private static nuint mi_atomic_fetch_sub_explicit([NativeTypeName("std::atomic<uintptr_t>*")] ref nuint p, [NativeTypeName("uintptr_t")] nuint sub, mi_memory_order_t mo)
-        => mi_atomic_fetch_add_explicit(ref p, (nuint)(-(nint)sub), mo);
+        => mi_atomic_fetch_add_explicit(ref p, unchecked((nuint)(-(nint)sub)), mo);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     [return: NativeTypeName("uintptr_t")]
@@ -145,16 +140,7 @@ public static unsafe partial class Mimalloc
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static bool mi_atomic_compare_exchange_strong_explicit([NativeTypeName("std::atomic<uintptr_t>*")] ref nuint p, [NativeTypeName("uintptr_t*")] ref nuint expected, [NativeTypeName("uintptr_t")] nuint desired, mi_memory_order_t mo1, mi_memory_order_t mo2)
     {
-        nuint read;
-
-        if (Environment.Is64BitProcess)
-        {
-            read = (nuint)Interlocked.CompareExchange(ref Unsafe.As<nuint, ulong>(ref p), desired, expected);
-        }
-        else
-        {
-            read = Interlocked.CompareExchange(ref Unsafe.As<nuint, uint>(ref p), (uint)desired, (uint)expected);
-        }
+        nuint read = Interlocked.CompareExchange(ref p, desired, expected);
 
         if (read == expected)
         {
@@ -174,16 +160,7 @@ public static unsafe partial class Mimalloc
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     [return: NativeTypeName("uintptr_t")]
     private static nuint mi_atomic_exchange_explicit([NativeTypeName("std::atomic<uintptr_t>*")] ref nuint p, [NativeTypeName("uintptr_t")] nuint exchange, mi_memory_order_t mo)
-    {
-        if (Environment.Is64BitProcess)
-        {
-            return (nuint)Interlocked.Exchange(ref Unsafe.As<nuint, ulong>(ref p), exchange);
-        }
-        else
-        {
-            return Interlocked.Exchange(ref Unsafe.As<nuint, uint>(ref p), (uint)exchange);
-        }
-    }
+        => Interlocked.Exchange(ref p, exchange);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void mi_atomic_thread_fence(mi_memory_order_t mo)
@@ -195,78 +172,32 @@ public static unsafe partial class Mimalloc
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     [return: NativeTypeName("uintptr_t")]
     private static nuint mi_atomic_load_explicit([NativeTypeName("std::atomic<uintptr_t> const*")] ref nuint p, mi_memory_order_t mo)
-    {
-        if (X86Base.IsSupported)
-        {
-            return p;
-        }
-        else
-        {
-            return SoftwareFallback(ref p, mo);
-        }
-
-        static nuint SoftwareFallback(ref nuint p, mi_memory_order_t mo)
-        {
-            nuint x = p;
-
-            if (mo > mi_memory_order_relaxed)
-            {
-                while (!mi_atomic_compare_exchange_weak_explicit(ref p, ref x, x, mo, mi_memory_order_relaxed))
-                {
-                    /* nothing */
-                }
-            }
-
-            return x;
-        }
-    }
+        => Volatile.Read(ref p);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void mi_atomic_store_explicit([NativeTypeName("std::atomic<uintptr_t>*")] ref nuint p, [NativeTypeName("uintptr_t")] nuint x, mi_memory_order_t mo)
-    {
-        if (X86Base.IsSupported)
-        {
-            p = x;
-        }
-        else
-        {
-            _ = mi_atomic_exchange_explicit(ref p, x, mo);
-        }
-    }
+        => Volatile.Write(ref p, x);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     [return: NativeTypeName("int64_t")]
     private static long mi_atomic_loadi64_explicit([NativeTypeName("std::atomic<int64_t>*")] ref long p, mi_memory_order_t mo)
     {
-        if (X86Base.X64.IsSupported)
+        if (Environment.Is64BitProcess)
         {
-            return p;
+            return Volatile.Read(ref p);
         }
         else
         {
-            return SoftwareFallback(ref p, mo);
-        }
-
-        static long SoftwareFallback(ref long p, mi_memory_order_t mo)
-        {
-            long old = p;
-            long x = old;
-
-            while ((old = Interlocked.CompareExchange(ref p, x, old)) != x)
-            {
-                x = old;
-            }
-
-            return x;
+            return Interlocked.Read(ref p);
         }
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void mi_atomic_storei64_explicit([NativeTypeName("std::atomic<int64_t>*")] ref long p, [NativeTypeName("int64_t")] long x, mi_memory_order_t mo)
     {
-        if (X86Base.IsSupported)
+        if (Environment.Is64BitProcess)
         {
-            p = x;
+            Volatile.Write(ref p, x);
         }
         else
         {
@@ -278,30 +209,7 @@ public static unsafe partial class Mimalloc
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     [return: NativeTypeName("int64_t")]
     private static long mi_atomic_addi64_relaxed([NativeTypeName("volatile std::atomic<int64_t>*")] ref long p, [NativeTypeName("int64_t")] long add)
-    {
-        if (Environment.Is64BitProcess)
-        {
-            return mi_atomic_addi(ref Unsafe.As<long, nint>(ref p), (nint)add);
-        }
-        else
-        {
-            return SoftwareFallback(ref p, add);
-        }
-
-        static long SoftwareFallback(ref long p, long add)
-        {
-            long current, sum;
-
-            do
-            {
-                current = p;
-                sum = current + add;
-            }
-            while (Interlocked.CompareExchange(ref p, sum, current) != current);
-
-            return current;
-        }
-    }
+        => unchecked(Interlocked.Add(ref p, add) - add);
 
     private static void mi_atomic_maxi64_relaxed([NativeTypeName("std::atomic<int64_t>*")] ref long p, [NativeTypeName("int64_t")] long x)
     {
@@ -309,7 +217,7 @@ public static unsafe partial class Mimalloc
 
         do
         {
-            current = p;
+            current = mi_atomic_loadi64_relaxed(ref p);
         }
         while ((current < x) && (Interlocked.CompareExchange(ref p, x, current) != current));
     }
