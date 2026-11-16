@@ -47,8 +47,8 @@ based applications.
 
 ### Languages and Frameworks
 
-TerraFX uses C# as its primary development language and .NET Core as our primary
-target framework.
+TerraFX uses C# as its primary development language, targets .NET 11 first, and
+also supports .NET 10.
 
 ### Benchmarks
 

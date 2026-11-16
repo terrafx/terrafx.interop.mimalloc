@@ -1,0 +1,42 @@
+name: Copilot Setup Steps
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+      - Directory.Packages.props
+      - TerraFX.Interop.Mimalloc.slnx
+      - '**/*.csproj'
+      - global.json
+      - NuGet.config
+      - Directory.Build.props
+      - Directory.Build.targets
+  pull_request:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+      - Directory.Packages.props
+      - TerraFX.Interop.Mimalloc.slnx
+      - '**/*.csproj'
+      - global.json
+      - NuGet.config
+      - Directory.Build.props
+      - Directory.Build.targets
+
+jobs:
+  copilot-setup-steps:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: |
+            11.0.x
+            10.0.x
+      - name: Restore dependencies
+        run: dotnet restore TerraFX.Interop.Mimalloc.slnx --verbosity minimal
