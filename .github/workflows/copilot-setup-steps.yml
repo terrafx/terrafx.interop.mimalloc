@@ -6,14 +6,22 @@ on:
     paths:
       - .github/workflows/copilot-setup-steps.yml
       - Directory.Packages.props
+      - TerraFX.Interop.Mimalloc.slnx
+      - '**/*.csproj'
       - global.json
       - NuGet.config
+      - Directory.Build.props
+      - Directory.Build.targets
   pull_request:
     paths:
       - .github/workflows/copilot-setup-steps.yml
       - Directory.Packages.props
+      - TerraFX.Interop.Mimalloc.slnx
+      - '**/*.csproj'
       - global.json
       - NuGet.config
+      - Directory.Build.props
+      - Directory.Build.targets
 
 jobs:
   copilot-setup-steps:
@@ -27,6 +35,8 @@ jobs:
       - name: Set up .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 10.0.x
+          dotnet-version: |
+            11.0.x
+            10.0.x
       - name: Restore dependencies
         run: dotnet restore TerraFX.Interop.Mimalloc.slnx --verbosity minimal

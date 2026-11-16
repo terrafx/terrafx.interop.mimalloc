@@ -64,11 +64,12 @@ investigations and claims, not as a requirement for unrelated changes.
 
 ## Build and validation
 
-Run commands from the repository root. Use the .NET SDK selected by
-`global.json`; all three projects target `net10.0`. A newer major SDK alone
-does not satisfy the configured roll-forward policy. No native mimalloc
-library, ClangSharp installation, or native SDK headers are needed to build
-this managed port.
+Run commands from the repository root. `global.json` pins the .NET 11 SDK,
+and all three projects target `net11.0` first and `net10.0` second. The .NET 11
+SDK builds both targets; tests for `net10.0` also require a .NET 10 runtime.
+The architecture-specific build-script setup installs the .NET 11 SDK and
+.NET 10 runtime side by side. No native mimalloc library, ClangSharp
+installation, or native SDK headers are needed to build this managed port.
 
 PowerShell examples:
 
@@ -94,7 +95,8 @@ Debug enables checked arithmetic and different allocator diagnostics from
 Release, so allocator arithmetic, initialization, and hot-path changes need
 both configurations. Confirm that filtered tests actually ran.
 
-CI covers Windows and Linux x64/arm64 and macOS arm64 in both configurations.
+CI covers Windows and Linux x64/arm64 and macOS arm64 in both configurations
+and targets both TFMs.
 OS memory allocation, page sizes, libc entry points, and optional APIs differ;
 success on one host does not establish other platform or architecture coverage.
 Passing `-architecture` / `--architecture` downloads a local SDK for that
