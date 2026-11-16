@@ -1,17 +1,32 @@
 <Solution>
-  <Folder Name="/.github/" />
+  <Folder Name="/.github/">
+    <File Path=".github/copilot-instructions.md" />
+    <File Path=".github/github-app.yml" />
+  </Folder>
+  <Folder Name="/.github/agents/">
+    <File Path=".github/agents/mimalloc-maintainer.agent.md" />
+  </Folder>
   <Folder Name="/.github/ISSUE_TEMPLATE/">
     <File Path=".github/ISSUE_TEMPLATE/bug.md" />
     <File Path=".github/ISSUE_TEMPLATE/proposal.md" />
     <File Path=".github/ISSUE_TEMPLATE/regression.md" />
   </Folder>
+  <Folder Name="/.github/skills/" />
+  <Folder Name="/.github/skills/benchmark-mimalloc/">
+    <File Path=".github/skills/benchmark-mimalloc/SKILL.md" />
+  </Folder>
+  <Folder Name="/.github/skills/port-upstream-mimalloc/">
+    <File Path=".github/skills/port-upstream-mimalloc/SKILL.md" />
+  </Folder>
   <Folder Name="/.github/workflows/">
     <File Path=".github/workflows/ci.yml" />
+    <File Path=".github/workflows/copilot-setup-steps.yml" />
   </Folder>
   <Folder Name="/.root/">
     <File Path=".editorconfig" />
     <File Path=".gitattributes" />
     <File Path=".gitignore" />
+    <File Path="AGENTS.md" />
     <File Path="build.cmd" />
     <File Path="build.sh" />
     <File Path="Directory.Build.props" />

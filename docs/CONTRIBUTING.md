@@ -7,6 +7,7 @@ The following is a set of guidelines for contributing to TerraFX.
 * [Code of Conduct](#code-of-conduct)
 * [License](#license)
 * [What should I know?](#what-should-i-know)
+* [Development and coding agents](#development-and-coding-agents)
 * [Pull Requests](#pull-requests)
 * [Issues](#issues)
 * [Questions](#questions)
@@ -27,6 +28,19 @@ Copyright © Tanner Gooding and Contributors. Licensed under the MIT License
 
 Most of the basics of the project, such as what it is about, and its goals are
 covered in our [README](README.md).
+
+### Development and coding agents
+
+See [repository guidance](../AGENTS.md) for the source layout, allocator
+conventions, and build/test commands. Copilot uses the repository instructions
+and app commands under `.github`; the
+[mimalloc maintainer agent](../.github/agents/mimalloc-maintainer.agent.md)
+provides an allocator-focused role. Task-specific skills cover
+[upstream porting](../.github/skills/port-upstream-mimalloc/SKILL.md) and
+[benchmarking](../.github/skills/benchmark-mimalloc/SKILL.md).
+
+The cloud agent's `copilot-setup-steps` workflow installs .NET and restores
+dependencies. It does not replace the build and validation for a change.
 
 ### Pull Requests
 

@@ -1,0 +1,11 @@
+instructions: |
+  Follow AGENTS.md for repository layout, allocator invariants, editing
+  conventions, and build/test commands.
+
+scripts:
+  - name: Build and test Debug
+    command: pwsh -NoLogo -NoProfile -File .\scripts\build.ps1 -restore -build -test
+  - name: Build and test Release
+    command: pwsh -NoLogo -NoProfile -File .\scripts\build.ps1 -configuration Release -restore -build -test
+  - name: Run allocator benchmarks
+    command: dotnet run --project .\benchmarks\Interop\Mimalloc\TerraFX.Interop.Mimalloc.Benchmarks.csproj -c Release
