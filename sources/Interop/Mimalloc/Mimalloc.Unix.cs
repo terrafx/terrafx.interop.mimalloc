@@ -13,6 +13,47 @@ namespace TerraFX.Interop.Mimalloc;
 
 public static unsafe partial class Mimalloc
 {
+    private const int PR_SET_THP_DISABLE = 41;
+    private const int PR_GET_THP_DISABLE = 42;
+    private const int ERRNO_ENOSYS = 38;
+    private const int R_OK = 4;
+
+    [DllImport("libc", ExactSpelling = true)]
+    private static extern int prctl(int option, nint arg2, nint arg3, nint arg4, nint arg5);
+
+    [DllImport("libc", ExactSpelling = true, SetLastError = true)]
+    private static extern nint syscall(nint number, void* arg1, nuint arg2, nuint arg3, nuint* arg4, nuint arg5, uint arg6);
+
+    private static nint get_sys_mbind_number()
+    {
+        return RuntimeInformation.ProcessArchitecture switch
+        {
+            Architecture.X64 => 237,
+            Architecture.Arm64 => 235,
+            _ => 0,
+        };
+    }
+
+    private static nint get_sys_getcpu_number()
+    {
+        return RuntimeInformation.ProcessArchitecture switch
+        {
+            Architecture.X64 => 309,
+            Architecture.Arm64 => 168,
+            Architecture.X86 => 318,
+            Architecture.Arm => 345,
+            _ => 0,
+        };
+    }
+
+    private static void mi_unix_mem_init()
+    {
+        if (IsLinux && !mi_option_is_enabled(mi_option_t.mi_option_allow_thp) && (prctl(PR_GET_THP_DISABLE, 0, 0, 0, 0) == 0))
+        {
+            _ = prctl(PR_SET_THP_DISABLE, 1, 0, 0, 0);
+        }
+    }
+
     [DllImport("libc", ExactSpelling = true)]
     private static extern int access([NativeTypeName("const char*")] sbyte* path, int amode);
 
@@ -42,6 +83,10 @@ public static unsafe partial class Mimalloc
                 // at least 256
                 path_max = 256;
             }
+            else if (m > 64 * 1024)
+            {
+                path_max = 64 * 1024;
+            }
             else
             {
                 path_max = (nuint)m;
@@ -59,6 +104,9 @@ public static unsafe partial class Mimalloc
 
     [DllImport("libc", ExactSpelling = true, SetLastError = true)]
     private static extern int munmap(void* addr, [NativeTypeName("size_t")] nuint len);
+
+    [DllImport("libc", ExactSpelling = true, SetLastError = true)]
+    private static extern int madvise(void* addr, [NativeTypeName("size_t")] nuint len, int advice);
 
     [DllImport("libc", ExactSpelling = true)]
     [return: NativeTypeName("long")]

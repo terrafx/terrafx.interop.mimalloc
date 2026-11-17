@@ -18,11 +18,11 @@ public static unsafe partial class Mimalloc
     ----------------------------------------------------------- */
 
     // Visit all pages in a heap; returns `false` if break was called.
-    private static bool mi_heap_visit_pages(mi_heap_t* heap, [NativeTypeName("heap_page_visitor_fun*")] heap_page_visitor_fun fn, void* arg1, void* arg2)
+    private static bool mi_heap_visit_pages(mi_heap_t* heap, [NativeTypeName("heap_page_visitor_fun*")] heap_page_visitor_fun fn, bool include_full, void* arg1, void* arg2)
     {
         if ((heap == null) || (heap->page_count == 0))
         {
-            return false;
+            return true;
         }
 
         nuint total = 0;
@@ -35,7 +35,8 @@ public static unsafe partial class Mimalloc
 
         nuint count = 0;
 
-        for (nuint i = 0; i <= MI_BIN_FULL; i++)
+        nuint max_bin = include_full ? MI_BIN_FULL : ((nuint)MI_BIN_FULL - 1);
+        for (nuint i = 0; i <= max_bin; i++)
         {
             mi_page_queue_t* pq = &heap->pages.e0 + i;
             mi_page_t* page = pq->first;
@@ -58,7 +59,7 @@ public static unsafe partial class Mimalloc
             }
         }
 
-        mi_assert_internal((MI_DEBUG > 1) && (count == total));
+        mi_assert_internal((MI_DEBUG > 1) && (!include_full || (count == total)));
         return true;
     }
 
@@ -82,7 +83,7 @@ public static unsafe partial class Mimalloc
         mi_assert_internal((MI_DEBUG > 1) && (MI_DEBUG >= 3));
         mi_assert_internal((MI_DEBUG > 1) && (heap != null));
 
-        _ = mi_heap_visit_pages(heap, mi_heap_page_is_valid, null, null);
+        _ = mi_heap_visit_pages(heap, mi_heap_page_is_valid, true, null, null);
         return true;
     }
 
@@ -128,7 +129,7 @@ public static unsafe partial class Mimalloc
     private static void mi_heap_collect_ex(mi_heap_t* heap, mi_collect_t collect)
     {
 #pragma warning disable CS0420
-        if (heap == null)
+        if ((heap == null) || !mi_heap_is_initialized(heap))
         {
             return;
         }
@@ -146,32 +147,30 @@ public static unsafe partial class Mimalloc
         // if abandoning, mark all pages to no longer add to delayed_free
         if (collect == MI_ABANDON)
         {
-            _ = mi_heap_visit_pages(heap, mi_heap_page_never_delayed_free, null, null);
+            _ = mi_heap_visit_pages(heap, mi_heap_page_never_delayed_free, true, null, null);
         }
 
         // free thread delayed blocks.
         // (if abandoning, after this there are no more thread-delayed references into the pages.)
-        _mi_heap_delayed_free(heap);
+        if (collect >= MI_ABANDON)
+        {
+            _mi_heap_delayed_free_all(heap);
+        }
+        else
+        {
+            _ = _mi_heap_delayed_free_partial(heap);
+        }
 
         // collect retired pages
         _mi_heap_collect_retired(heap, collect >= MI_FORCE);
 
         // collect all pages owned by this thread
-        _ = mi_heap_visit_pages(heap, mi_heap_page_collect, &collect, null);
+        _ = mi_heap_visit_pages(heap, mi_heap_page_collect, collect != MI_NORMAL, &collect, null);
 
         mi_assert_internal((MI_DEBUG > 1) && ((collect != MI_ABANDON) || (mi_atomic_load_ptr_acquire<mi_block_t>(ref heap->thread_delayed_free) == null)));
 
-        // collect segment caches
-        if (collect >= MI_FORCE)
-        {
-            _mi_segment_thread_collect(&heap->tld->segments);
-        }
-
-        // collect regions on program-exit (or shared library unload)
-        if ((collect >= MI_FORCE) && _mi_is_main_thread() && mi_heap_is_backing(heap))
-        {
-            _mi_mem_collect(&heap->tld->os);
-        }
+        _mi_segments_collect(collect == MI_FORCE, &heap->tld->segments);
+        _mi_arenas_collect(collect == MI_FORCE, ref heap->tld->stats);
 #pragma warning restore CS0420
     }
 
@@ -183,6 +182,15 @@ public static unsafe partial class Mimalloc
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static partial void mi_heap_collect(IntPtr heap, bool force) => mi_heap_collect((mi_heap_t*)heap, force);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static partial IntPtr mi_theap_get_default() => mi_heap_get_default();
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static partial IntPtr mi_theap_set_default(IntPtr heap) => mi_heap_set_default(heap);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static partial void mi_theap_collect(IntPtr heap, bool force) => mi_heap_collect(heap, force);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static partial void mi_collect(bool force) => mi_heap_collect(mi_get_default_heap(), force);
@@ -207,7 +215,11 @@ public static unsafe partial class Mimalloc
         return (IntPtr)bheap;
     }
 
-    public static partial IntPtr mi_heap_new()
+    public static partial IntPtr mi_heap_new() => mi_heap_new_ex(0, allow_destroy: true, arena_id: 0);
+
+    public static partial IntPtr mi_heap_new_in_arena(int arena_id) => mi_heap_new_ex(0, allow_destroy: false, arena_id: arena_id);
+
+    public static partial IntPtr mi_heap_new_ex(int heap_tag, bool allow_destroy, int arena_id)
     {
         mi_heap_t* bheap = (mi_heap_t*)mi_heap_get_backing();
 
@@ -219,8 +231,32 @@ public static unsafe partial class Mimalloc
             return IntPtr.Zero;
         }
 
-        init_mi_heap(heap, bheap->tld, bheap);
+        mi_assert((MI_DEBUG != 0) && (heap_tag >= 0) && (heap_tag < 256));
+        init_mi_heap(heap, bheap->tld, bheap, no_reclaim: allow_destroy, tag: (byte)heap_tag);
+        heap->arena_id = arena_id;
+        _mi_heap_guarded_init(heap);
         return (IntPtr)heap;
+    }
+
+    private static bool _mi_heap_memid_is_suitable(mi_heap_t* heap, mi_memid_t memid)
+        => mi_arena_memid_is_suitable(memid, heap->arena_id);
+
+    private static mi_heap_t* _mi_heap_by_tag(mi_heap_t* heap, byte tag)
+    {
+        if (heap->tag == tag)
+        {
+            return heap;
+        }
+
+        for (mi_heap_t* current = heap->tld->heaps; current != null; current = current->next)
+        {
+            if (current->tag == tag)
+            {
+                return current;
+            }
+        }
+
+        return null;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -229,6 +265,9 @@ public static unsafe partial class Mimalloc
     // zero out the page queues
     private static void mi_heap_reset_pages(mi_heap_t* heap)
     {
+        mi_assert_internal((MI_DEBUG > 1) && (heap != null));
+        mi_assert_internal((MI_DEBUG > 1) && mi_heap_is_initialized(heap));
+
         // TODO: copy full empty heap instead?
 
         heap->pages_free_direct = *_mi_heap_empty_pages_free_direct;
@@ -236,12 +275,20 @@ public static unsafe partial class Mimalloc
 
         heap->thread_delayed_free = 0;
         heap->page_count = 0;
+        heap->pages_full_size = 0;
+        heap->generic_count = 0;
+        heap->generic_collect_count = 0;
     }
 
     // called from `mi_heap_destroy` and `mi_heap_delete` to free the internal heap resources.
     private static void mi_heap_free(mi_heap_t* heap)
     {
         mi_assert((MI_DEBUG != 0) && (heap != null));
+
+        if ((heap == null) || !mi_heap_is_initialized(heap))
+        {
+            return;
+        }
 
         if (mi_heap_is_backing(heap))
         {
@@ -301,17 +348,10 @@ public static unsafe partial class Mimalloc
 
         if (bsize > MI_LARGE_OBJ_SIZE_MAX)
         {
-            if (bsize > MI_HUGE_OBJ_SIZE_MAX)
-            {
-                _mi_stat_decrease(ref heap->tld->stats.giant, bsize);
-            }
-            else
-            {
-                _mi_stat_decrease(ref heap->tld->stats.huge, bsize);
-            }
+            _mi_stat_decrease(ref heap->tld->stats.huge, bsize);
         }
 
-        if (MI_STAT > 1)
+        if (MI_STAT > 0)
         {
             // update used count
             _mi_page_free_collect(page, false);
@@ -320,7 +360,12 @@ public static unsafe partial class Mimalloc
 
             if (bsize <= MI_LARGE_OBJ_SIZE_MAX)
             {
-                mi_stat_decrease(ref (&heap->tld->stats.normal.e0)[_mi_bin(bsize)], inuse);
+                mi_stat_decrease(ref heap->tld->stats.normal, bsize * inuse);
+
+                if (MI_STAT > 1)
+                {
+                    mi_stat_decrease(ref (&heap->tld->stats.normal_bins.e0)[_mi_bin(bsize)], inuse);
+                }
             }
 
             // todo: off for aligned blocks...
@@ -347,7 +392,7 @@ public static unsafe partial class Mimalloc
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static partial void _mi_heap_destroy_pages(mi_heap_t* heap)
     {
-        _ = mi_heap_visit_pages(heap, _mi_heap_page_destroy, null, null);
+        _ = mi_heap_visit_pages(heap, _mi_heap_page_destroy, true, null, null);
         mi_heap_reset_pages(heap);
     }
 
@@ -356,6 +401,11 @@ public static unsafe partial class Mimalloc
         mi_assert((MI_DEBUG != 0) && (heap != null));
         mi_assert((MI_DEBUG != 0) && heap->no_reclaim);
         mi_assert_expensive((MI_DEBUG > 2) && mi_heap_is_valid(heap));
+
+        if ((heap == null) || !mi_heap_is_initialized(heap))
+        {
+            return;
+        }
 
         if (!heap->no_reclaim)
         {
@@ -388,7 +438,7 @@ public static unsafe partial class Mimalloc
         }
 
         // reduce the size of the delayed frees
-        _mi_heap_delayed_free(from);
+        _ = _mi_heap_delayed_free_partial(from);
 
         // transfer all pages by appending the queues; this will set a new heap field 
         // so threads may do delayed frees in either heap for a while.
@@ -407,18 +457,25 @@ public static unsafe partial class Mimalloc
         }
 
         mi_assert_internal((MI_DEBUG > 1) && (from->page_count == 0));
+        heap->pages_full_size += from->pages_full_size;
+        from->pages_full_size = 0;
 
         // and do outstanding delayed frees in the `from` heap  
         // note: be careful here as the `heap` field in all those pages no longer point to `from`,
         // turns out to be ok as `_mi_heap_delayed_free` only visits the list and calls a 
         // the regular `_mi_free_delayed_block` which is safe.
-        _mi_heap_delayed_free(from);
+        _mi_heap_delayed_free_all(from);
 
-        mi_assert_internal((MI_DEBUG > 1) && (from->thread_delayed_free == 0));
+#pragma warning disable CS0420
+        mi_assert_internal((MI_DEBUG > 1) && (mi_atomic_load_ptr_relaxed<mi_block_t>(ref from->thread_delayed_free) == null));
+#pragma warning restore CS0420
 
         // and reset the `from` heap
         mi_heap_reset_pages(from);
     }
+
+    private static bool mi_heaps_are_compatible(mi_heap_t* heap1, mi_heap_t* heap2)
+        => (heap1->tag == heap2->tag) && (heap1->arena_id == heap2->arena_id);
 
     // Safe delete a heap without freeing any still allocated blocks in that heap.
     private static void mi_heap_delete(mi_heap_t* heap)
@@ -426,10 +483,17 @@ public static unsafe partial class Mimalloc
         mi_assert((MI_DEBUG != 0) && (heap != null));
         mi_assert_expensive((MI_DEBUG > 2) && mi_heap_is_valid(heap));
 
-        if (!mi_heap_is_backing(heap))
+        if ((heap == null) || !mi_heap_is_initialized(heap))
+        {
+            return;
+        }
+
+        mi_heap_t* backing_heap = heap->tld->heap_backing;
+
+        if ((backing_heap != heap) && mi_heaps_are_compatible(backing_heap, heap))
         {
             // tranfer still used pages to the backing heap
-            mi_heap_absorb(heap->tld->heap_backing, heap);
+            mi_heap_absorb(backing_heap, heap);
         }
         else
         {
@@ -446,6 +510,14 @@ public static unsafe partial class Mimalloc
 
     private static mi_heap_t* mi_heap_set_default(mi_heap_t* heap)
     {
+        mi_assert((MI_DEBUG != 0) && (heap != null));
+        mi_assert((MI_DEBUG != 0) && mi_heap_is_initialized(heap));
+
+        if ((heap == null) || !mi_heap_is_initialized(heap))
+        {
+            return null;
+        }
+
         mi_assert_expensive((MI_DEBUG > 2) && mi_heap_is_valid(heap));
         mi_heap_t* old = mi_get_default_heap();
 
@@ -485,18 +557,58 @@ public static unsafe partial class Mimalloc
     private static bool mi_heap_contains_block(mi_heap_t* heap, [NativeTypeName("const void*")] void* p)
     {
         mi_assert((MI_DEBUG != 0) && (heap != null));
+
+        if ((heap == null) || !mi_heap_is_initialized(heap))
+        {
+            return false;
+        }
+
         return heap == mi_heap_of_block(p);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static partial bool mi_heap_contains_block(IntPtr heap, void* p) => mi_heap_contains_block((mi_heap_t*)heap, p);
 
+    // The caller must be the only thread accessing the page.
+    public static partial bool mi_unsafe_heap_page_is_under_utilized(IntPtr heap, void* p, nuint perc_threshold)
+    {
+        if (p == null)
+        {
+            return false;
+        }
+
+        mi_segment_t* segment = _mi_ptr_segment(p);
+        if ((segment == null) || ((MI_DEBUG != 0) && !mi_is_in_heap_region(p)) || (_mi_ptr_cookie(segment) != segment->cookie))
+        {
+            return false;
+        }
+
+        mi_page_t* page = _mi_segment_page_of(segment, p);
+        if ((page == null) || (page->used == page->capacity) || (page->capacity < page->reserved) || (page->prev == null))
+        {
+            return false;
+        }
+
+        mi_heap_t* page_heap = mi_page_heap(page);
+        if ((page_heap == null) || ((heap != IntPtr.Zero) && (page_heap != (mi_heap_t*)heap)) || (page->capacity == 0))
+        {
+            return false;
+        }
+
+        if (perc_threshold >= 100)
+        {
+            return true;
+        }
+
+        return perc_threshold >= (((nuint)100 * page->used) / page->capacity);
+    }
+
     private static bool mi_heap_page_check_owned(mi_heap_t* heap, mi_page_queue_t* pq, mi_page_t* page, void* p, void* vfound)
     {
         bool* found = (bool*)vfound;
         mi_segment_t* segment = _mi_page_segment(page);
 
-        void* start = _mi_page_start(segment, page, out _);
+        void* start = mi_page_start(page);
         void* end = (byte*)start + (page->capacity * mi_page_block_size(page));
 
         *found = (p >= start) && (p < end);
@@ -509,6 +621,11 @@ public static unsafe partial class Mimalloc
     {
         mi_assert((MI_DEBUG != 0) && (heap != null));
 
+        if ((heap == null) || !mi_heap_is_initialized(heap))
+        {
+            return false;
+        }
+
         if (((nuint)p & (MI_INTPTR_SIZE - 1)) != 0)
         {
             // only aligned pointers
@@ -516,7 +633,7 @@ public static unsafe partial class Mimalloc
         }
 
         bool found = false;
-        _ = mi_heap_visit_pages(heap, mi_heap_page_check_owned, (void*)p, &found);
+        _ = mi_heap_visit_pages(heap, mi_heap_page_check_owned, true, (void*)p, &found);
         return found;
     }
 
@@ -560,7 +677,7 @@ public static unsafe partial class Mimalloc
         }
 
         nuint bsize = mi_page_block_size(page);
-        byte* pstart = _mi_page_start(_mi_page_segment(page), page, out nuint psize);
+        byte* pstart = _mi_segment_page_start(_mi_page_segment(page), page, out nuint psize, out _);
 
         if (page->capacity == 1)
         {
@@ -638,9 +755,10 @@ public static unsafe partial class Mimalloc
         xarea.page = page;
         xarea.area.reserved = page->reserved * bsize;
         xarea.area.committed = page->capacity * bsize;
-        xarea.area.blocks = _mi_page_start(_mi_page_segment(page), page, out _);
+        xarea.area.blocks = mi_page_start(page);
         xarea.area.used = page->used;
         xarea.area.block_size = bsize;
+        xarea.area.heap_tag = page->heap_tag;
 
         return fun(heap, &xarea, arg);
     }
@@ -650,6 +768,7 @@ public static unsafe partial class Mimalloc
     {
         if (visitor == null)
         {
+            _mi_error_message(EINVAL, "mi_abandoned_visit_blocks: visitor must not be null\n");
             return false;
         }
 
@@ -658,7 +777,7 @@ public static unsafe partial class Mimalloc
 
         try
         {
-            return mi_heap_visit_pages(heap, mi_heap_visit_areas_page, (void*)GCHandle.ToIntPtr(handle), arg);
+            return mi_heap_visit_pages(heap, mi_heap_visit_areas_page, true, (void*)GCHandle.ToIntPtr(handle), arg);
         }
         finally
         {
@@ -708,6 +827,83 @@ public static unsafe partial class Mimalloc
         {
             handle.Free();
         }
+    }
+
+    private static bool mi_segment_visit_page(mi_page_t* page, bool visit_blocks, mi_block_visit_fun visitor, void* arg)
+    {
+        nuint block_size = mi_page_block_size(page);
+        mi_heap_area_ex_t area = default;
+        area.page = page;
+        area.area.reserved = page->reserved * block_size;
+        area.area.committed = page->capacity * block_size;
+        area.area.blocks = mi_page_start(page);
+        area.area.used = page->used;
+        area.area.block_size = block_size;
+        area.area.heap_tag = page->heap_tag;
+
+        if (!visitor(IntPtr.Zero, &area.area, null, block_size, arg))
+        {
+            return false;
+        }
+
+        return !visit_blocks || mi_heap_area_visit_blocks(&area, visitor, arg);
+    }
+
+    private static bool _mi_segment_visit_blocks(mi_segment_t* segment, int heap_tag, bool visit_blocks, mi_block_visit_fun visitor, void* arg)
+    {
+        for (nuint i = 0; i < segment->capacity; i++)
+        {
+            mi_page_t* page = &segment->pages.e0 + (nint)i;
+            if (page->segment_in_use && ((heap_tag < 0) || (page->heap_tag == (byte)heap_tag)))
+            {
+                if (!mi_segment_visit_page(page, visit_blocks, visitor, arg))
+                {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    public static partial bool mi_abandoned_visit_blocks(IntPtr subproc_id, int heap_tag, bool visit_blocks, mi_block_visit_fun visitor, void* arg)
+    {
+        if (!mi_option_is_enabled(mi_option_t.mi_option_visit_abandoned))
+        {
+            _mi_error_message(EFAULT, "internal error: can only visit abandoned blocks when MIMALLOC_VISIT_ABANDONED=ON\n");
+            return false;
+        }
+
+        if (visitor == null)
+        {
+            return false;
+        }
+
+        mi_subproc_t* subproc = _mi_subproc_from_id(subproc_id);
+        _mi_arena_field_cursor_init(null, subproc, true, out mi_arena_field_cursor_t current);
+        bool ok = true;
+
+        try
+        {
+            mi_segment_t* segment;
+            while (ok && ((segment = _mi_arena_segment_clear_abandoned_next(ref current)) != null))
+            {
+                try
+                {
+                    ok = _mi_segment_visit_blocks(segment, heap_tag, visit_blocks, visitor, arg);
+                }
+                finally
+                {
+                    _mi_arena_segment_mark_abandoned(segment);
+                }
+            }
+        }
+        finally
+        {
+            _mi_arena_field_cursor_done(ref current);
+        }
+
+        return ok;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

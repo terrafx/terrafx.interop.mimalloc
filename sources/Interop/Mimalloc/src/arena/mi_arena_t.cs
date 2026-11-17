@@ -8,6 +8,12 @@ namespace TerraFX.Interop.Mimalloc;
 // A memory arena descriptor
 internal unsafe struct mi_arena_t
 {
+    public int id;
+
+    public mi_memid_t memid;
+
+    public bool exclusive;
+
     // the start of the memory area
     [NativeTypeName("std::atomic<uint8_t*>")]
     public volatile nuint start;
@@ -20,29 +26,40 @@ internal unsafe struct mi_arena_t
     [NativeTypeName("size_t")]
     public nuint field_count;
 
+    [NativeTypeName("size_t")]
+    public nuint meta_size;
+
+    public mi_memid_t meta_memid;
+
     // associated NUMA node
     public int numa_node;
 
-    // is the arena zero initialized?
-    public bool is_zero_init;
-
-    // is the memory committed
-    public bool is_committed;
-
     // large OS page allocated
     public bool is_large;
+
+    public int abandoned_visit_lock;
 
     // optimization to start the search for free blocks
     [NativeTypeName("std::atomic<uintptr_t>")]
     public volatile nuint search_idx;
 
+    [NativeTypeName("std::atomic<int64_t>")]
+    public long purge_expire;
+
     // are the blocks potentially non-zero?
     [NativeTypeName("mi_bitmap_field_t*")]
     public volatile nuint* blocks_dirty;
 
-    // if `!is_committed`, are the blocks committed?
+    [NativeTypeName("mi_bitmap_field_t*")]
+    public volatile nuint* blocks_abandoned;
+
+    // if `allow_decommit`, are the blocks committed?
     [NativeTypeName("mi_bitmap_field_t*")]
     public volatile nuint* blocks_committed;
+
+    // blocks that can be reset/decommitted
+    [NativeTypeName("mi_bitmap_field_t*")]
+    public volatile nuint* blocks_purge;
 
     // in-place bitmap of in-use blocks (of size `field_count`)
     [NativeTypeName("mi_bitmap_field_t [1]")]

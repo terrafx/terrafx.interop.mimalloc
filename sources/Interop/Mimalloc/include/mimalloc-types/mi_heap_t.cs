@@ -10,20 +10,15 @@ internal unsafe struct mi_heap_t
 {
     public mi_tld_t* tld;
 
-    // optimize: array where every entry points a page with possibly free blocks in the corresponding queue for that size.
-    [NativeTypeName("mi_page_t* [MI_PAGES_DIRECT]")]
-    public _pages_free_direct_e__FixedBuffer pages_free_direct;
-
-    // queue of pages for each size class (or "bin")
-    [NativeTypeName("mi_page_queue_t [MI_BIN_FULL + 1]")]
-    public _pages_e__FixedBuffer pages;
-
     [NativeTypeName("std::atomic<mi_block_t*>")]
     public volatile nuint thread_delayed_free;
 
     // thread this heap belongs too
     [NativeTypeName("uintptr_t")]
     public nuint thread_id;
+
+    [NativeTypeName("mi_arena_id_t")]
+    public int arena_id;
 
     // random cookie to verify pointers (see `_mi_ptr_cookie`)
     [NativeTypeName("uintptr_t")]
@@ -48,11 +43,45 @@ internal unsafe struct mi_heap_t
     [NativeTypeName("size_t")]
     public nuint page_retired_max;
 
+    // total block capacity in the full-page queue
+    [NativeTypeName("size_t")]
+    public nuint pages_full_size;
+
+    [NativeTypeName("long")]
+    public long generic_count;
+
+    [NativeTypeName("long")]
+    public long generic_collect_count;
+
     // list of heaps per thread
     public mi_heap_t* next;
 
     // `true` if this heap should not reclaim abandoned pages
     public bool no_reclaim;
+
+    // custom tag used to keep allocation types in separate heaps
+    [NativeTypeName("uint8_t")]
+    public byte tag;
+
+    [NativeTypeName("size_t")]
+    public nuint guarded_size_min;
+
+    [NativeTypeName("size_t")]
+    public nuint guarded_size_max;
+
+    [NativeTypeName("size_t")]
+    public nuint guarded_sample_rate;
+
+    [NativeTypeName("size_t")]
+    public nuint guarded_sample_count;
+
+    // optimize: array where every entry points a page with possibly free blocks in the corresponding queue for that size.
+    [NativeTypeName("mi_page_t* [MI_PAGES_DIRECT]")]
+    public _pages_free_direct_e__FixedBuffer pages_free_direct;
+
+    // queue of pages for each size class (or "bin")
+    [NativeTypeName("mi_page_queue_t [MI_BIN_FULL + 1]")]
+    public _pages_e__FixedBuffer pages;
 
     public partial struct _pages_free_direct_e__FixedBuffer
     {

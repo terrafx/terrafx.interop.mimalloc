@@ -24,7 +24,27 @@ public static unsafe partial class Mimalloc
 {
     private const uint ERROR_INVALID_ADDRESS = 487;
 
-    private const uint ERROR_INVALID_PARAMETER = 87;
+    private const uint ERROR_INVALID_FUNCTION = 1;
+
+    private const uint ERROR_FILE_NOT_FOUND = 2;
+
+    private const uint ERROR_PATH_NOT_FOUND = 3;
+
+    private const uint ERROR_INVALID_HANDLE = 6;
+
+    private const uint ERROR_INVALID_ACCESS = 12;
+
+    private const uint ERROR_SHARING_VIOLATION = 32;
+
+    private const uint ERROR_LOCK_VIOLATION = 33;
+
+    private const uint ERROR_COMMITMENT_MINIMUM = 635;
+
+    private const uint ERROR_PAGEFILE_QUOTA = 1454;
+
+    private const uint ERROR_COMMITMENT_LIMIT = 1455;
+
+    private const uint ERROR_NOT_ENOUGH_MEMORY = 8;
 
     private const uint ERROR_SUCCESS = 0;
 
@@ -74,7 +94,7 @@ public static unsafe partial class Mimalloc
     [return: NativeTypeName("DWORD")]
     public static extern uint GetCurrentProcessorNumber();
 
-    [DllImport("kernel32", EntryPoint = "GetFullPathNameA", ExactSpelling = true)]
+    [DllImport("kernel32", EntryPoint = "GetFullPathNameA", ExactSpelling = true, SetLastError = true)]
     [return: NativeTypeName("DWORD")]
     public static extern uint GetFullPathName([NativeTypeName("LPCSTR")] sbyte* lpFileName, [NativeTypeName("DWORD")] uint nBufferLength, [NativeTypeName("LPSTR")] sbyte* lpBuffer, [NativeTypeName("LPSTR *")] sbyte** lpFilePart);
 
@@ -130,8 +150,8 @@ public static unsafe partial class Mimalloc
     private static extern int VirtualProtect([NativeTypeName("LPVOID")] void* lpAddress, [NativeTypeName("SIZE_T")] nuint dwSize, [NativeTypeName("DWORD")] uint flNewProtect, [NativeTypeName("PDWORD")] uint* lpfOldProtect);
 
     [DllImport("kernel32", ExactSpelling = true, SetLastError = true)]
-    [return: NativeTypeName("BOOL")]
-    private static extern int VirtualUnlock([NativeTypeName("LPVOID")] void* lpAddress, [NativeTypeName("SIZE_T")] nuint dwSize);
+    [return: NativeTypeName("SIZE_T")]
+    private static extern nuint VirtualQuery([NativeTypeName("LPCVOID")] void* lpAddress, [NativeTypeName("PMEMORY_BASIC_INFORMATION")] MEMORY_BASIC_INFORMATION* lpBuffer, [NativeTypeName("SIZE_T")] nuint dwLength);
 
     internal enum MEM_EXTENDED_PARAMETER_TYPE
     {
@@ -256,6 +276,33 @@ public static unsafe partial class Mimalloc
             [NativeTypeName("DWORD")]
             public uint ULong;
         }
+    }
+
+    private struct MEMORY_BASIC_INFORMATION
+    {
+        [NativeTypeName("PVOID")]
+        public void* BaseAddress;
+
+        [NativeTypeName("PVOID")]
+        public void* AllocationBase;
+
+        [NativeTypeName("DWORD")]
+        public uint AllocationProtect;
+
+        [NativeTypeName("WORD")]
+        public ushort PartitionId;
+
+        [NativeTypeName("SIZE_T")]
+        public nuint RegionSize;
+
+        [NativeTypeName("DWORD")]
+        public uint State;
+
+        [NativeTypeName("DWORD")]
+        public uint Protect;
+
+        [NativeTypeName("DWORD")]
+        public uint Type;
     }
 
     private struct PROCESS_MEMORY_COUNTERS

@@ -17,18 +17,18 @@ public static unsafe partial class Mimalloc
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static bool mi_is_in_main([NativeTypeName("void*")] ref byte stat)
     {
-        ref byte _mi_stats_main_start = ref Unsafe.As<mi_stats_t, byte>(ref _mi_stats_main);
-        ref byte _mi_stats_main_end = ref Unsafe.AddByteOffset(ref _mi_stats_main_start, (nint)SizeOf<mi_stats_t>());
+        ref byte _mi_stats_main_start = ref Unsafe.As<mi_stats_internal_t, byte>(ref _mi_stats_main);
+        ref byte _mi_stats_main_end = ref Unsafe.AddByteOffset(ref _mi_stats_main_start, (nint)SizeOf<mi_stats_internal_t>());
         return (Unsafe.IsAddressGreaterThan(ref stat, ref _mi_stats_main_start) || Unsafe.AreSame(ref stat, ref _mi_stats_main_start)) && Unsafe.IsAddressLessThan(ref stat, ref _mi_stats_main_end);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static bool mi_is_in_main([NativeTypeName("void*")] ref mi_stat_count_t stat) => mi_is_in_main(ref Unsafe.As<mi_stat_count_t, byte>(ref stat));
+    private static bool mi_is_in_main([NativeTypeName("void*")] ref mi_stat_count_internal_t stat) => mi_is_in_main(ref Unsafe.As<mi_stat_count_internal_t, byte>(ref stat));
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static bool mi_is_in_main([NativeTypeName("void*")] ref mi_stat_counter_t stat) => mi_is_in_main(ref Unsafe.As<mi_stat_counter_t, byte>(ref stat));
+    private static bool mi_is_in_main([NativeTypeName("void*")] ref mi_stat_counter_internal_t stat) => mi_is_in_main(ref Unsafe.As<mi_stat_counter_internal_t, byte>(ref stat));
 
-    private static void mi_stat_update([NativeTypeName("mi_stat_count_t*")] ref mi_stat_count_t stat, [NativeTypeName("int64_t")] long amount)
+    private static void mi_stat_update([NativeTypeName("mi_stat_count_t*")] ref mi_stat_count_internal_t stat, [NativeTypeName("int64_t")] long amount)
     {
         if (amount == 0)
         {
@@ -72,7 +72,35 @@ public static unsafe partial class Mimalloc
         }
     }
 
-    private static partial void _mi_stat_counter_increase(ref mi_stat_counter_t stat, nuint amount)
+    private static void mi_stat_adjust(ref mi_stat_count_internal_t stat, long amount)
+    {
+        if (amount == 0)
+        {
+            return;
+        }
+
+        if (mi_is_in_main(ref stat))
+        {
+            long current = mi_atomic_addi64_relaxed(ref stat.current, amount);
+            mi_atomic_maxi64_relaxed(ref stat.peak, current + amount);
+            _ = mi_atomic_addi64_relaxed(ref stat.allocated, amount);
+        }
+        else
+        {
+            stat.current += amount;
+            stat.allocated += amount;
+            if (stat.current > stat.peak)
+            {
+                stat.peak = stat.current;
+            }
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void mi_stat_adjust_decrease(ref mi_stat_count_internal_t stat, nuint amount)
+        => mi_stat_adjust(ref stat, -(long)amount);
+
+    private static partial void _mi_stat_counter_increase(ref mi_stat_counter_internal_t stat, nuint amount)
     {
         if (mi_is_in_main(ref stat))
         {
@@ -87,13 +115,13 @@ public static unsafe partial class Mimalloc
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static partial void _mi_stat_increase(ref mi_stat_count_t stat, nuint amount) => mi_stat_update(ref stat, (long)amount);
+    private static partial void _mi_stat_increase(ref mi_stat_count_internal_t stat, nuint amount) => mi_stat_update(ref stat, (long)amount);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static partial void _mi_stat_decrease(ref mi_stat_count_t stat, nuint amount) => mi_stat_update(ref stat, -(long)amount);
+    private static partial void _mi_stat_decrease(ref mi_stat_count_internal_t stat, nuint amount) => mi_stat_update(ref stat, -(long)amount);
 
     // must be thread safe as it is called from stats_merge
-    private static void mi_stat_add([NativeTypeName("mi_stat_count_t*")] ref mi_stat_count_t stat, [NativeTypeName("const mi_stat_count_t*")] in mi_stat_count_t src, [NativeTypeName("int64_t")] long unit)
+    private static void mi_stat_add([NativeTypeName("mi_stat_count_t*")] ref mi_stat_count_internal_t stat, [NativeTypeName("const mi_stat_count_t*")] in mi_stat_count_internal_t src, [NativeTypeName("int64_t")] long unit)
     {
         if (Unsafe.AreSame(ref stat, ref Unsafe.AsRef(in src)))
         {
@@ -113,7 +141,7 @@ public static unsafe partial class Mimalloc
         _ = mi_atomic_addi64_relaxed(ref stat.peak, src.peak * unit);
     }
 
-    private static void mi_stat_counter_add([NativeTypeName("mi_stat_count_t*")] ref mi_stat_counter_t stat, [NativeTypeName("const mi_stat_counter_t*")] in mi_stat_counter_t src, [NativeTypeName("int64_t")] long unit)
+    private static void mi_stat_counter_add([NativeTypeName("mi_stat_count_t*")] ref mi_stat_counter_internal_t stat, [NativeTypeName("const mi_stat_counter_t*")] in mi_stat_counter_internal_t src, [NativeTypeName("int64_t")] long unit)
     {
         if (Unsafe.AreSame(ref stat, ref Unsafe.AsRef(in src)))
         {
@@ -125,7 +153,7 @@ public static unsafe partial class Mimalloc
     }
 
     // must be thread safe as it is called from stats_merge
-    private static void mi_stats_add(ref mi_stats_t stats, [NativeTypeName("const mi_stats_t*")] in mi_stats_t src)
+    private static void mi_stats_add(ref mi_stats_internal_t stats, [NativeTypeName("const mi_stats_t*")] in mi_stats_internal_t src)
     {
         if (Unsafe.AreSame(ref stats, ref Unsafe.AsRef(in src)))
         {
@@ -137,6 +165,7 @@ public static unsafe partial class Mimalloc
         mi_stat_add(ref stats.reserved, in src.reserved, 1);
         mi_stat_add(ref stats.committed, in src.committed, 1);
         mi_stat_add(ref stats.reset, in src.reset, 1);
+        mi_stat_add(ref stats.purged, in src.purged, 1);
         mi_stat_add(ref stats.page_committed, in src.page_committed, 1);
 
         mi_stat_add(ref stats.pages_abandoned, in src.pages_abandoned, 1);
@@ -144,30 +173,49 @@ public static unsafe partial class Mimalloc
         mi_stat_add(ref stats.threads, in src.threads, 1);
 
         mi_stat_add(ref stats.malloc, in src.malloc, 1);
+        mi_stat_add(ref stats.malloc_requested, in src.malloc_requested, 1);
+        mi_stat_add(ref stats.normal, in src.normal, 1);
         mi_stat_add(ref stats.segments_cache, in src.segments_cache, 1);
         mi_stat_add(ref stats.huge, in src.huge, 1);
-        mi_stat_add(ref stats.giant, in src.giant, 1);
 
         mi_stat_counter_add(ref stats.pages_extended, in src.pages_extended, 1);
+        mi_stat_counter_add(ref stats.arena_count, in src.arena_count, 1);
+        mi_stat_counter_add(ref stats.arena_rollback_count, in src.arena_rollback_count, 1);
+        mi_stat_counter_add(ref stats.arena_purges, in src.arena_purges, 1);
+        mi_stat_counter_add(ref stats.pages_retire, in src.pages_retire, 1);
         mi_stat_counter_add(ref stats.mmap_calls, in src.mmap_calls, 1);
         mi_stat_counter_add(ref stats.commit_calls, in src.commit_calls, 1);
+        mi_stat_counter_add(ref stats.reset_calls, in src.reset_calls, 1);
+        mi_stat_counter_add(ref stats.purge_calls, in src.purge_calls, 1);
 
         mi_stat_counter_add(ref stats.page_no_retire, in src.page_no_retire, 1);
         mi_stat_counter_add(ref stats.searches, in src.searches, 1);
+        mi_stat_counter_add(ref stats.normal_count, in src.normal_count, 1);
         mi_stat_counter_add(ref stats.huge_count, in src.huge_count, 1);
-        mi_stat_counter_add(ref stats.giant_count, in src.giant_count, 1);
+        mi_stat_counter_add(ref stats.malloc_guarded_count, in src.malloc_guarded_count, 1);
 
         if (MI_STAT > 1)
         {
             for (nuint i = 0; i <= MI_BIN_HUGE; i++)
             {
-                ref readonly mi_stat_count_t src_normal = ref Unsafe.Add(ref Unsafe.AsRef(in src.normal.e0), (nint)i);
-                ref mi_stat_count_t stats_normal = ref Unsafe.Add(ref stats.normal.e0, (nint)i);
+                ref readonly mi_stat_count_internal_t src_normal = ref Unsafe.Add(ref Unsafe.AsRef(in src.normal_bins.e0), (nint)i);
+                ref mi_stat_count_internal_t stats_normal = ref Unsafe.Add(ref stats.normal_bins.e0, (nint)i);
 
                 if ((src_normal.allocated > 0) || (src_normal.freed > 0))
                 {
                     mi_stat_add(ref stats_normal, in src_normal, 1);
                 }
+            }
+        }
+
+        for (nuint i = 0; i <= MI_BIN_HUGE; i++)
+        {
+            ref readonly mi_stat_count_internal_t src_page = ref Unsafe.Add(ref Unsafe.AsRef(in src.page_bins.e0), (nint)i);
+            ref mi_stat_count_internal_t stats_page = ref Unsafe.Add(ref stats.page_bins.e0, (nint)i);
+
+            if ((src_page.allocated > 0) || (src_page.freed > 0))
+            {
+                mi_stat_add(ref stats_page, in src_page, 1);
             }
         }
     }
@@ -218,10 +266,10 @@ public static unsafe partial class Mimalloc
             long whole = tens / 10;
             long frac1 = tens % 10;
 
-            buf = string.Format("{0}.{1} {2}{3}", whole, frac1, magnitude, suffix);
+            buf = string.Format("{0}.{1} {2}{3}", whole, (frac1 < 0) ? -frac1 : frac1, magnitude, suffix);
         }
 
-        _mi_fprintf(@out, arg, string.IsNullOrEmpty(fmt) ? "{0,-11}" : fmt, buf);
+        _mi_fprintf(@out, arg, string.IsNullOrEmpty(fmt) ? "{0,-12}" : fmt, buf);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -231,7 +279,7 @@ public static unsafe partial class Mimalloc
     {
         if (unit == 1)
         {
-            _mi_fprintf(@out, arg, "{0,-11}", " ");
+            _mi_fprintf(@out, arg, "{0,-12}", " ");
         }
         else
         {
@@ -239,7 +287,15 @@ public static unsafe partial class Mimalloc
         }
     }
 
-    private static void mi_stat_print([NativeTypeName("const mi_stat_count_t*")] in mi_stat_count_t stat, [NativeTypeName("const char*")] string msg, [NativeTypeName("int64_t")] long unit, [NativeTypeName("mi_output_fun*")] mi_output_fun? @out, void* arg)
+    private static void mi_stat_total_print(in mi_stat_count_internal_t stat, string msg, long unit, mi_output_fun? @out, void* arg)
+    {
+        _mi_fprintf(@out, arg, "{0,-10}: ", msg);
+        _mi_fprintf(@out, arg, "{0,-12}", " ");
+        mi_print_amount(stat.allocated, unit, @out, arg);
+        _mi_fprintf(@out, arg, "\n");
+    }
+
+    private static void mi_stat_print([NativeTypeName("const mi_stat_count_t*")] in mi_stat_count_internal_t stat, [NativeTypeName("const char*")] string msg, [NativeTypeName("int64_t")] long unit, [NativeTypeName("mi_output_fun*")] mi_output_fun? @out, void* arg, string? notok = null)
     {
         _mi_fprintf(@out, arg, "{0,-10}: ", msg);
 
@@ -248,12 +304,13 @@ public static unsafe partial class Mimalloc
             mi_print_amount(stat.peak, unit, @out, arg);
             mi_print_amount(stat.allocated, unit, @out, arg);
             mi_print_amount(stat.freed, unit, @out, arg);
+            mi_print_amount(stat.current, unit, @out, arg);
             mi_print_amount(unit, 1, @out, arg);
             mi_print_count(stat.allocated, unit, @out, arg);
 
             if (stat.allocated > stat.freed)
             {
-                _mi_fprintf(@out, arg, "  not all freed!\n");
+                _mi_fprintf(@out, arg, "  {0}\n", notok ?? "not all freed");
             }
             else
             {
@@ -265,10 +322,11 @@ public static unsafe partial class Mimalloc
             mi_print_amount(stat.peak, -1, @out, arg);
             mi_print_amount(stat.allocated, -1, @out, arg);
             mi_print_amount(stat.freed, -1, @out, arg);
+            mi_print_amount(stat.current, -1, @out, arg);
 
             if (unit == -1)
             {
-                _mi_fprintf(@out, arg, "{0,-22}", "");
+                _mi_fprintf(@out, arg, "{0,-24}", "");
             }
             else
             {
@@ -278,7 +336,7 @@ public static unsafe partial class Mimalloc
 
             if (stat.allocated > stat.freed)
             {
-                _mi_fprintf(@out, arg, "  not all freed!\n");
+                _mi_fprintf(@out, arg, "  {0}\n", notok ?? "not all freed");
             }
             else
             {
@@ -289,19 +347,28 @@ public static unsafe partial class Mimalloc
         {
             mi_print_amount(stat.peak, 1, @out, arg);
             mi_print_amount(stat.allocated, 1, @out, arg);
+            _mi_fprintf(@out, arg, "{0,-12}", " ");
+            mi_print_amount(stat.current, 1, @out, arg);
 
             _mi_fprintf(@out, arg, "\n");
         }
     }
 
-    private static void mi_stat_counter_print([NativeTypeName("const mi_stat_counter_t*")] in mi_stat_counter_t stat, [NativeTypeName("const char*")] string msg, [NativeTypeName("mi_output_fun*")] mi_output_fun? @out, void* arg)
+    private static void mi_stat_counter_print([NativeTypeName("const mi_stat_counter_t*")] in mi_stat_counter_internal_t stat, [NativeTypeName("const char*")] string msg, [NativeTypeName("mi_output_fun*")] mi_output_fun? @out, void* arg)
     {
         _mi_fprintf(@out, arg, "{0,-10}:", msg);
         mi_print_amount(stat.total, -1, @out, arg);
         _mi_fprintf(@out, arg, "\n");
     }
 
-    private static void mi_stat_counter_print_avg([NativeTypeName("const mi_stat_counter_t*")] in mi_stat_counter_t stat, [NativeTypeName("const char*")] string msg, [NativeTypeName("mi_output_fun*")] mi_output_fun? @out, void* arg)
+    private static void mi_stat_peak_print([NativeTypeName("const mi_stat_count_t*")] in mi_stat_count_internal_t stat, [NativeTypeName("const char*")] string msg, [NativeTypeName("int64_t")] long unit, [NativeTypeName("mi_output_fun*")] mi_output_fun? @out, void* arg)
+    {
+        _mi_fprintf(@out, arg, "{0,-10}: ", msg);
+        mi_print_amount(stat.peak, unit, @out, arg);
+        _mi_fprintf(@out, arg, "\n");
+    }
+
+    private static void mi_stat_counter_print_avg([NativeTypeName("const mi_stat_counter_t*")] in mi_stat_counter_internal_t stat, [NativeTypeName("const char*")] string msg, [NativeTypeName("mi_output_fun*")] mi_output_fun? @out, void* arg)
     {
         long avg_tens = (stat.count == 0) ? 0 : (stat.total * 10 / stat.count);
 
@@ -312,9 +379,9 @@ public static unsafe partial class Mimalloc
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static void mi_print_header([NativeTypeName("mi_output_fun*")] mi_output_fun? @out, void* arg) => _mi_fprintf(@out, arg, "\n{0,-10}: {1,-10} {2,-10} {3,-10} {4,-10} {5,-10}\n", "heap stats", "peak  ", "total  ", "freed  ", "unit  ", "count  ");
+    private static void mi_print_header([NativeTypeName("mi_output_fun*")] mi_output_fun? @out, void* arg) => _mi_fprintf(@out, arg, "\n{0,-10}: {1,-11} {2,-11} {3,-11} {4,-11} {5,-11} {6,-11}\n", "heap stats", "peak  ", "total  ", "freed  ", "current  ", "unit  ", "count  ");
 
-    private static void mi_stats_print_bins(ref mi_stat_count_t all, [NativeTypeName("const mi_stat_count_t*")] in mi_stat_count_t bins, [NativeTypeName("size_t")] nuint max, [NativeTypeName("const char*")] string fmt, [NativeTypeName("mi_output_fun*")] mi_output_fun? @out, void* arg)
+    private static void mi_stats_print_bins([NativeTypeName("const mi_stat_count_t*")] in mi_stat_count_internal_t bins, [NativeTypeName("size_t")] nuint max, [NativeTypeName("const char*")] string fmt, [NativeTypeName("mi_output_fun*")] mi_output_fun? @out, void* arg)
     {
         if (MI_STAT > 1)
         {
@@ -323,7 +390,7 @@ public static unsafe partial class Mimalloc
 
             for (nuint i = 0; i <= max; i++)
             {
-                ref readonly mi_stat_count_t bin = ref Unsafe.Add(ref Unsafe.AsRef(in bins), (nint)i);
+                ref readonly mi_stat_count_internal_t bin = ref Unsafe.Add(ref Unsafe.AsRef(in bins), (nint)i);
 
                 if (bin.allocated > 0)
                 {
@@ -332,7 +399,6 @@ public static unsafe partial class Mimalloc
                     long unit = (long)_mi_bin_size((byte)i);
                     buf = string.Format("{0} {1,-3}", fmt, (long)i);
 
-                    mi_stat_add(ref all, in bin, unit);
                     mi_stat_print(in bin, buf, unit, @out, arg);
                 }
             }
@@ -351,34 +417,36 @@ public static unsafe partial class Mimalloc
 
     private static partial void mi_stat_process_info([NativeTypeName("mi_msecs_t*")] out long elapsed, [NativeTypeName("mi_msecs_t*")] out long utime, [NativeTypeName("mi_msecs_t*")] out long stime, [NativeTypeName("size_t*")] out nuint current_rss, [NativeTypeName("size_t*")] out nuint peak_rss, [NativeTypeName("size_t*")] out nuint current_commit, [NativeTypeName("size_t*")] out nuint peak_commit, [NativeTypeName("size_t*")] out nuint page_faults);
 
-    private static void _mi_stats_print([NativeTypeName("mi_stats_t*")] in mi_stats_t stats, [NativeTypeName("mi_output_fun*")] mi_output_fun? out0, void* arg0)
+    private static void _mi_stats_print([NativeTypeName("mi_stats_t*")] in mi_stats_internal_t stats, [NativeTypeName("mi_output_fun*")] mi_output_fun? out0, void* arg0)
     {
         // and print using that
         mi_print_header(out0, arg0);
 
         if (MI_STAT > 1)
         {
-            mi_stat_count_t normal = default;
-            mi_stats_print_bins(ref normal, in stats.normal.e0, MI_BIN_HUGE, "normal", out0, arg0);
-            mi_stat_print(in normal, "normal", 1, out0, arg0);
-
-            mi_stat_print(in stats.huge, "huge", (stats.huge_count.count == 0) ? 1 : -(stats.huge.allocated / stats.huge_count.count), out0, arg0);
-            mi_stat_print(in stats.giant, "giant", (stats.giant_count.count == 0) ? 1 : -(stats.giant.allocated / stats.giant_count.count), out0, arg0);
-
-            mi_stat_count_t total = default;
-            mi_stat_add(ref total, in normal, 1);
-            mi_stat_add(ref total, in stats.huge, 1);
-            mi_stat_add(ref total, in stats.giant, 1);
-            mi_stat_print(in total, "total", 1, out0, arg0);
-
-            _mi_fprintf(out0, arg0, "malloc requested:     ");
-            mi_print_amount(stats.malloc.allocated, 1, out0, arg0);
-            _mi_fprintf(out0, arg0, "\n\n");
+            mi_stats_print_bins(in stats.normal_bins.e0, MI_BIN_HUGE, "normal", out0, arg0);
         }
 
-        mi_stat_print(in stats.reserved, "reserved", 1, out0, arg0);
-        mi_stat_print(in stats.committed, "committed", 1, out0, arg0);
-        mi_stat_print(in stats.reset, "reset", 1, out0, arg0);
+        if (MI_STAT > 0)
+        {
+            mi_stat_print(in stats.normal, "normal", (stats.normal_count.count == 0) ? 1 : -(stats.normal.allocated / stats.normal_count.count), out0, arg0);
+            mi_stat_print(in stats.huge, "huge", (stats.huge_count.count == 0) ? 1 : -(stats.huge.allocated / stats.huge_count.count), out0, arg0);
+            mi_stat_count_internal_t total = default;
+            mi_stat_add(ref total, in stats.normal, 1);
+            mi_stat_add(ref total, in stats.huge, 1);
+            mi_stat_print(in total, "total", 1, out0, arg0);
+        }
+
+        if (MI_STAT > 1)
+        {
+            mi_stat_total_print(in stats.malloc_requested, "malloc req", 1, out0, arg0);
+            _mi_fprintf(out0, arg0, "\n");
+        }
+
+        mi_stat_print(in stats.reserved, "reserved", 1, out0, arg0, "");
+        mi_stat_print(in stats.committed, "committed", 1, out0, arg0, "");
+        mi_stat_peak_print(in stats.reset, "reset", 1, out0, arg0);
+        mi_stat_peak_print(in stats.purged, "purged", 1, out0, arg0);
         mi_stat_print(in stats.page_committed, "touched", 1, out0, arg0);
         mi_stat_print(in stats.segments, "segments", -1, out0, arg0);
         mi_stat_print(in stats.segments_abandoned, "-abandoned", -1, out0, arg0);
@@ -389,13 +457,15 @@ public static unsafe partial class Mimalloc
         mi_stat_counter_print(in stats.page_no_retire, "-noretire", out0, arg0);
         mi_stat_counter_print(in stats.mmap_calls, "mmaps", out0, arg0);
         mi_stat_counter_print(in stats.commit_calls, "commits", out0, arg0);
+        mi_stat_counter_print(in stats.reset_calls, "resets", out0, arg0);
+        mi_stat_counter_print(in stats.purge_calls, "purges", out0, arg0);
         mi_stat_print(in stats.threads, "threads", -1, out0, arg0);
         mi_stat_counter_print_avg(in stats.searches, "searches", out0, arg0);
-        _mi_fprintf(out0, arg0, "{0,-10}: {1,-7}\n", "numa nodes", _mi_os_numa_node_count());
+        _mi_fprintf(out0, arg0, "{0,-10}: {1,-5}\n", "numa nodes", _mi_os_numa_node_count());
 
         mi_stat_process_info(out long elapsed, out long user_time, out long sys_time, out nuint current_rss, out nuint peak_rss, out nuint current_commit, out nuint peak_commit, out nuint page_faults);
 
-        _mi_fprintf(out0, arg0, "{0,-10}: {1,7}.{2,-3} s\n", "elapsed", elapsed / 1000, elapsed % 1000);
+        _mi_fprintf(out0, arg0, "{0,-10}: {1,5}.{2,-3} s\n", "elapsed", elapsed / 1000, elapsed % 1000);
         _mi_fprintf(out0, arg0, "{0,-10}: user: {1}.{2,-3} s, system: {3}.{4,-3} s, faults: {5}, rss: ", "process", user_time / 1000, user_time % 1000, sys_time / 1000, sys_time % 1000, (uint)page_faults);
 
         mi_printf_amount((long)peak_rss, 1, out0, arg0, "{0}");
@@ -411,13 +481,13 @@ public static unsafe partial class Mimalloc
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     [return: NativeTypeName("mi_stats_t*")]
-    private static ref mi_stats_t mi_stats_get_default()
+    private static ref mi_stats_internal_t mi_stats_get_default()
     {
         mi_heap_t* heap = (mi_heap_t*)mi_heap_get_default();
         return ref heap->tld->stats;
     }
 
-    private static void mi_stats_merge_from([NativeTypeName("mi_stats_t*")] ref mi_stats_t stats)
+    private static void mi_stats_merge_from([NativeTypeName("mi_stats_t*")] ref mi_stats_internal_t stats)
     {
         if (!Unsafe.AreSame(ref stats, ref _mi_stats_main))
         {
@@ -428,7 +498,7 @@ public static unsafe partial class Mimalloc
 
     public static partial void mi_stats_reset()
     {
-        ref mi_stats_t stats = ref mi_stats_get_default();
+        ref mi_stats_internal_t stats = ref mi_stats_get_default();
 
         if (!Unsafe.AreSame(ref stats, ref _mi_stats_main))
         {
@@ -443,7 +513,7 @@ public static unsafe partial class Mimalloc
 
     // called from `mi_thread_done`
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static partial void _mi_stats_done(ref mi_stats_t stats) => mi_stats_merge_from(ref stats);
+    private static partial void _mi_stats_done(ref mi_stats_internal_t stats) => mi_stats_merge_from(ref stats);
 
     public static partial void mi_stats_print_out(mi_output_fun? @out, void* arg)
     {
@@ -531,24 +601,40 @@ public static unsafe partial class Mimalloc
         {
             elapsed = _mi_clock_end(mi_process_start);
 
-            rusage rusage;
-            _ = getrusage(RUSAGE_SELF, &rusage);
+            rusage rusage = default;
+            bool has_rusage = getrusage(RUSAGE_SELF, &rusage) == 0;
 
-            utime = timeval_secs(in rusage.ru_utime);
-            stime = timeval_secs(in rusage.ru_stime);
-
-            page_faults = (nuint)rusage.ru_majflt;
+            if (has_rusage)
+            {
+                utime = timeval_secs(in rusage.ru_utime);
+                stime = timeval_secs(in rusage.ru_stime);
+                page_faults = (nuint)rusage.ru_majflt;
+            }
+            else
+            {
+                utime = 0;
+                stime = 0;
+                page_faults = 0;
+            }
 
             // estimate commit using our stats
 
             peak_commit = (nuint)mi_atomic_loadi64_relaxed(ref _mi_stats_main.committed.peak);
             current_commit = (nuint)mi_atomic_loadi64_relaxed(ref _mi_stats_main.committed.current);
 
-            // estimate
-            current_rss = current_commit;
+            if (IsMacOS)
+            {
+                using Process process = Process.GetCurrentProcess();
+                current_rss = (nuint)process.WorkingSet64;
+                peak_rss = has_rusage ? (nuint)rusage.ru_maxrss : 0;
+            }
+            else
+            {
+                current_rss = current_commit;
 
-            // Linux reports in KiB
-            peak_rss = (nuint)(rusage.ru_maxrss * 1024);
+                // Linux reports in KiB
+                peak_rss = has_rusage ? (nuint)(rusage.ru_maxrss * 1024) : 0;
+            }
         }
         else
         {

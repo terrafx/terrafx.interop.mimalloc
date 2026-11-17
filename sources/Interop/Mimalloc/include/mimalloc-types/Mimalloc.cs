@@ -70,14 +70,14 @@ public static unsafe partial class Mimalloc
         }
     }
 
-    private static partial void _mi_stat_increase([NativeTypeName("mi_stat_count_t*")] ref mi_stat_count_t stat, [NativeTypeName("size_t")] nuint amount);
+    private static partial void _mi_stat_increase([NativeTypeName("mi_stat_count_t*")] ref mi_stat_count_internal_t stat, [NativeTypeName("size_t")] nuint amount);
 
-    private static partial void _mi_stat_decrease([NativeTypeName("mi_stat_count_t*")] ref mi_stat_count_t stat, [NativeTypeName("size_t")] nuint amount);
+    private static partial void _mi_stat_decrease([NativeTypeName("mi_stat_count_t*")] ref mi_stat_count_internal_t stat, [NativeTypeName("size_t")] nuint amount);
 
-    private static partial void _mi_stat_counter_increase([NativeTypeName("mi_stat_counter_t*")] ref mi_stat_counter_t stat, [NativeTypeName("size_t")] nuint amount);
+    private static partial void _mi_stat_counter_increase([NativeTypeName("mi_stat_counter_t*")] ref mi_stat_counter_internal_t stat, [NativeTypeName("size_t")] nuint amount);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static void mi_stat_increase([NativeTypeName("mi_stat_count_t*")] ref mi_stat_count_t stat, [NativeTypeName("size_t")] nuint amount)
+    private static void mi_stat_increase([NativeTypeName("mi_stat_count_t*")] ref mi_stat_count_internal_t stat, [NativeTypeName("size_t")] nuint amount)
     {
         if (MI_STAT != 0)
         {
@@ -86,7 +86,7 @@ public static unsafe partial class Mimalloc
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static void mi_stat_decrease([NativeTypeName("mi_stat_count_t*")] ref mi_stat_count_t stat, [NativeTypeName("size_t")] nuint amount)
+    private static void mi_stat_decrease([NativeTypeName("mi_stat_count_t*")] ref mi_stat_count_internal_t stat, [NativeTypeName("size_t")] nuint amount)
     {
         if (MI_STAT != 0)
         {
@@ -95,7 +95,7 @@ public static unsafe partial class Mimalloc
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static void mi_stat_counter_increase([NativeTypeName("mi_stat_counter_t*")] ref mi_stat_counter_t stat, [NativeTypeName("size_t")] nuint amount)
+    private static void mi_stat_counter_increase([NativeTypeName("mi_stat_counter_t*")] ref mi_stat_counter_internal_t stat, [NativeTypeName("size_t")] nuint amount)
     {
         if (MI_STAT != 0)
         {

@@ -34,22 +34,85 @@ public static unsafe partial class Mimalloc
         }
 
         mi_assert_internal((MI_DEBUG > 1) && (SizeOf<mi_heap_t._pages_e__FixedBuffer>() == (SizeOf<mi_page_queue_t>() * (MI_BIN_FULL + 1))));
-        mi_assert_internal((MI_DEBUG > 1) && (SizeOf<mi_stats_t._normal_e__FixedBuffer>() == (SizeOf<mi_stat_count_t>() * (MI_BIN_HUGE + 1))));
+        mi_assert_internal((MI_DEBUG > 1) && (SizeOf<mi_stats_internal_t._normal_bins_e__FixedBuffer>() == (SizeOf<mi_stat_count_internal_t>() * (MI_BIN_HUGE + 1))));
 
         atexit(mi_process_done);
 
         _mi_options_init();
+        mi_unix_mem_init();
         mi_process_init();
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static void abort() => Environment.Exit(-1);
+    private static void abort() => Environment.FailFast("mimalloc abort");
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void atexit(EventHandler func) => AppDomain.CurrentDomain.ProcessExit += func;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static nuint* create_mi_arenas() => (nuint*)RuntimeHelpers.AllocateTypeAssociatedMemory(typeof(Mimalloc), (int)(SizeOf<nuint>() * MI_MAX_ARENAS));
+
+    private static mi_subproc_t* create_mi_subproc_default()
+    {
+        mi_subproc_t* subproc = (mi_subproc_t*)RuntimeHelpers.AllocateTypeAssociatedMemory(typeof(Mimalloc), sizeof(mi_subproc_t));
+        *subproc = default;
+        return subproc;
+    }
+
+    private static byte* create_mi_arena_static() => (byte*)RuntimeHelpers.AllocateTypeAssociatedMemory(typeof(Mimalloc), (int)MI_ARENA_STATIC_MAX);
+
+    private static nuint* create_mi_segment_map()
+    {
+        nuint count = MI_SEGMENT_MAP_WSIZE + 1;
+        nuint* map = (nuint*)RuntimeHelpers.AllocateTypeAssociatedMemory(typeof(Mimalloc), (int)(count * MI_INTPTR_SIZE));
+
+        for (nuint i = 0; i < count; i++)
+        {
+            map[i] = 0;
+        }
+
+        return map;
+    }
+
+    private static mi_memid_t mi_memid_create(mi_memkind_t memkind)
+    {
+        mi_memid_t memid = default;
+        memid.memkind = memkind;
+        return memid;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static mi_memid_t mi_memid_none() => mi_memid_create(mi_memkind_t.MI_MEM_NONE);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static mi_memid_t mi_memid_create_os(void* @base, nuint size, bool committed, bool is_zero, bool is_large)
+    {
+        mi_memid_t memid = mi_memid_create(mi_memkind_t.MI_MEM_OS);
+        memid.mem.os.@base = @base;
+        memid.mem.os.size = size;
+        memid.initially_committed = committed;
+        memid.initially_zero = is_zero;
+        memid.is_pinned = is_large;
+        return memid;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool mi_memkind_is_os(mi_memkind_t memkind)
+        => ((int)memkind >= (int)mi_memkind_t.MI_MEM_OS) && ((int)memkind <= (int)mi_memkind_t.MI_MEM_OS_REMAP);
+
+    private const int MI_THREAD_DATA_CACHE_SIZE = 32;
+
+    private static nuint* create_mi_thread_data_cache()
+    {
+        nuint* cache = (nuint*)RuntimeHelpers.AllocateTypeAssociatedMemory(typeof(Mimalloc), MI_THREAD_DATA_CACHE_SIZE * sizeof(nuint));
+
+        for (int i = 0; i < MI_THREAD_DATA_CACHE_SIZE; i++)
+        {
+            cache[i] = 0;
+        }
+
+        return cache;
+    }
 
     private static mi_heap_t* create_mi_heap_default()
     {
@@ -63,35 +126,92 @@ public static unsafe partial class Mimalloc
         }
         else
         {
-            // use `_mi_os_alloc` to allocate directly from the OS
-            mi_thread_data_t* td = (mi_thread_data_t*)_mi_os_alloc(SizeOf<mi_thread_data_t>(), ref _mi_stats_main); // Todo: more efficient allocation?
-
+            mi_thread_data_t* td = mi_thread_data_alloc();
             if (td == null)
             {
-                // if this fails, try once more. (issue #257)
-                td = (mi_thread_data_t*)_mi_os_alloc(SizeOf<mi_thread_data_t>(), ref _mi_stats_main);
-
-                if (td == null)
-                {
-                    // really out of memory
-                    _mi_error_message(ENOMEM, "unable to allocate thread local heap metadata ({0} bytes)\n", sizeof(mi_thread_data_t));
-                    mi_heap_default = null;
-                }
+                return null;
             }
 
             mi_heap_default = &td->heap;
+            init_mi_tld(&td->tld, mi_heap_default);
             init_mi_heap(mi_heap_default, &td->tld);
+            _mi_heap_guarded_init(mi_heap_default);
         }
 
+        _ = mi_atomic_increment_relaxed(ref thread_count);
         _mi_stat_increase(ref _mi_stats_main.threads, 1);
         _mi_verbose_message("thread init: 0x{0:X}\n", _mi_thread_id());
 
         return mi_heap_default;
     }
 
+    private static mi_thread_data_t* mi_thread_data_alloc()
+    {
+        for (int i = 0; i < MI_THREAD_DATA_CACHE_SIZE; i++)
+        {
+            if (mi_atomic_load_relaxed(ref mi_thread_data_cache[i]) != 0)
+            {
+                mi_thread_data_t* td = mi_atomic_exchange_ptr_acq_rel<mi_thread_data_t>(ref mi_thread_data_cache[i], null);
+                if (td != null)
+                {
+                    return td;
+                }
+            }
+        }
+
+        mi_thread_data_t* result = (mi_thread_data_t*)_mi_os_alloc(SizeOf<mi_thread_data_t>(), out mi_memid_t memid, ref _mi_stats_main);
+
+        if (result == null)
+        {
+            // if this fails, try once more. (issue #257)
+            result = (mi_thread_data_t*)_mi_os_alloc(SizeOf<mi_thread_data_t>(), out memid, ref _mi_stats_main);
+
+            if (result == null)
+            {
+                _mi_error_message(ENOMEM, "unable to allocate thread local heap metadata ({0} bytes)\n", sizeof(mi_thread_data_t));
+            }
+        }
+        else
+        {
+            result->memid = memid;
+        }
+
+        return result;
+    }
+
+    private static void mi_thread_data_free(mi_thread_data_t* tdfree)
+    {
+        for (int i = 0; i < MI_THREAD_DATA_CACHE_SIZE; i++)
+        {
+            if (mi_atomic_load_relaxed(ref mi_thread_data_cache[i]) == 0)
+            {
+                nuint expected = 0;
+                if (mi_atomic_cas_ptr_weak_acq_rel<mi_thread_data_t>(ref mi_thread_data_cache[i], ref expected, tdfree))
+                {
+                    return;
+                }
+            }
+        }
+
+        _mi_os_free(tdfree, SizeOf<mi_thread_data_t>(), tdfree->memid, ref _mi_stats_main);
+    }
+
+    private static void mi_thread_data_collect()
+    {
+        for (int i = 0; i < MI_THREAD_DATA_CACHE_SIZE; i++)
+        {
+            mi_thread_data_t* td = mi_atomic_exchange_ptr_acq_rel<mi_thread_data_t>(ref mi_thread_data_cache[i], null);
+            if (td != null)
+            {
+                _mi_os_free(td, SizeOf<mi_thread_data_t>(), td->memid, ref _mi_stats_main);
+            }
+        }
+    }
+
     private static mi_heap_t* create_mi_heap_main()
     {
         mi_heap_t* mi_heap_main = (mi_heap_t*)RuntimeHelpers.AllocateTypeAssociatedMemory(typeof(Mimalloc), sizeof(mi_heap_t));
+        init_mi_tld(tld_main, mi_heap_main);
         init_mi_heap(mi_heap_main, tld_main);
         return mi_heap_main;
     }
@@ -118,17 +238,12 @@ public static unsafe partial class Mimalloc
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static mem_region_t* create_regions() => (mem_region_t*)RuntimeHelpers.AllocateTypeAssociatedMemory(typeof(Mimalloc), (int)(SizeOf<mem_region_t>() * MI_REGION_MAX));
-
     private static mi_tld_t* create_tld()
     {
         mi_tld_t* tld = (mi_tld_t*)RuntimeHelpers.AllocateTypeAssociatedMemory(typeof(Mimalloc), sizeof(mi_tld_t));
         *tld = default;
         return tld;
     }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static void exit(int status) => Environment.Exit(status);
 
     private static uint get_app_context_data(string name, uint defaultValue)
     {
@@ -281,6 +396,24 @@ public static unsafe partial class Mimalloc
         return os_page_size;
     }
 
+    private static nuint get_os_virtual_address_bits()
+    {
+        if (!Environment.Is64BitProcess)
+        {
+            return 32;
+        }
+
+        if (!IsWindows)
+        {
+            return 48;
+        }
+
+        SYSTEM_INFO si;
+        GetSystemInfo(&si);
+        nuint max_address = (nuint)si.lpMaximumApplicationAddress;
+        return (max_address == 0) ? 48 : (MI_INTPTR_SIZE * 8 - mi_clz(max_address));
+    }
+
     [return: NativeTypeName("size_t")]
     private static nuint get_os_alloc_granularity()
     {
@@ -309,7 +442,7 @@ public static unsafe partial class Mimalloc
         return os_alloc_granularity;
     }
 
-    private static void init_mi_heap(mi_heap_t* heap, mi_tld_t* tld, mi_heap_t* bheap = null)
+    private static void init_mi_heap(mi_heap_t* heap, mi_tld_t* tld, mi_heap_t* bheap = null, bool no_reclaim = true, byte tag = 0)
     {
         *heap = new mi_heap_t {
             tld = tld,
@@ -317,25 +450,20 @@ public static unsafe partial class Mimalloc
             pages = *_mi_heap_empty_pages,
             thread_id = _mi_thread_id(),
             page_retired_min = MI_BIN_FULL,
+            tag = tag,
         };
 
         if (bheap != null)
         {
-            _mi_random_split(in bheap->random, out heap->random);
+            _mi_random_split(ref bheap->random, out heap->random);
 
-            // don't reclaim abandoned pages or otherwise destroy is unsafe
-            heap->no_reclaim = true;
+            heap->no_reclaim = no_reclaim;
 
             heap->next = heap->tld->heaps;
         }
         else
         {
             _mi_random_init(out heap->random);
-
-            tld->heap_backing = heap;
-            tld->segments.stats = &tld->stats;
-            tld->segments.os = &tld->os;
-            tld->os.stats = &tld->stats;
         }
 
         heap->cookie = _mi_heap_random_next(heap) | 1;
@@ -344,6 +472,17 @@ public static unsafe partial class Mimalloc
         heap->keys.e1 = _mi_heap_random_next(heap);
 
         tld->heaps = heap;
+    }
+
+    private static void init_mi_tld(mi_tld_t* tld, mi_heap_t* heap_backing)
+    {
+        *tld = default;
+        tld->heap_backing = heap_backing;
+        tld->heaps = heap_backing;
+        tld->segments.subproc = _mi_subproc_default;
+        tld->segments.stats = &tld->stats;
+        tld->segments.os = &tld->os;
+        tld->os.stats = &tld->stats;
     }
 
     private static void init_mi_heap_empty_pages(mi_heap_t._pages_e__FixedBuffer* pages)

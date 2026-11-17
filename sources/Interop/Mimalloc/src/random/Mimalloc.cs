@@ -181,14 +181,15 @@ public static unsafe partial class Mimalloc
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static partial void _mi_random_split(in mi_random_ctx_t ctx, out mi_random_ctx_t ctx_new)
+    private static partial void _mi_random_split(ref mi_random_ctx_t ctx, out mi_random_ctx_t ctx_new)
     {
         Unsafe.SkipInit(out ctx_new);
 
         mi_assert_internal((MI_DEBUG > 1) && mi_random_is_initialized(ctx));
         mi_assert_internal((MI_DEBUG > 1) && (!Unsafe.AreSame(ref Unsafe.AsRef(in ctx), ref ctx_new)));
 
-        chacha_split(in ctx, nonce: (nuint)Unsafe.AsPointer(ref ctx_new), out ctx_new);
+        nuint nonce_rnd = _mi_random_next(ref ctx);
+        chacha_split(in ctx, nonce: (nuint)Unsafe.AsPointer(ref ctx_new) ^ nonce_rnd, out ctx_new);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -196,14 +197,21 @@ public static unsafe partial class Mimalloc
     {
         mi_assert_internal((MI_DEBUG > 1) && mi_random_is_initialized(in ctx));
 
-        if (Environment.Is64BitProcess)
+        nuint result;
+        do
         {
-            return ((nuint)chacha_next32(ref ctx) << 32) | chacha_next32(ref ctx);
+            if (Environment.Is64BitProcess)
+            {
+                result = ((nuint)chacha_next32(ref ctx) << 32) | chacha_next32(ref ctx);
+            }
+            else
+            {
+                result = chacha_next32(ref ctx);
+            }
         }
-        else
-        {
-            return chacha_next32(ref ctx);
-        }
+        while (result == 0);
+
+        return result;
     }
 
     /* ----------------------------------------------------------------------------

@@ -1,6 +1,7 @@
 // Copyright © Tanner Gooding and Contributors. Licensed under the MIT License (MIT). See License.md in the repository root for more information.
 
 using System;
+using System.IO;
 using System.Runtime.InteropServices;
 using static TerraFX.Interop.Mimalloc.mi_init_t;
 using static TerraFX.Interop.Mimalloc.mi_option_t;
@@ -23,7 +24,45 @@ public static unsafe partial class Mimalloc
 
     private static readonly bool IsWindows = OperatingSystem.IsWindows();
 
+    private static readonly bool os_overcommit = get_os_overcommit();
+
     private static readonly bool IsWindows10OrLater = OperatingSystem.IsWindowsVersionAtLeast(10);
+
+    private static bool get_os_overcommit()
+    {
+        if (!IsUnix)
+        {
+            return false;
+        }
+
+        if (!IsLinux)
+        {
+            return true;
+        }
+
+        try
+        {
+            using FileStream stream = File.OpenRead("/proc/sys/vm/overcommit_memory");
+            int mode = stream.ReadByte();
+            return (mode < 0) || (mode == '0') || (mode == '1');
+        }
+        catch (IOException)
+        {
+            return true;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return true;
+        }
+    }
+
+    private static nuint thread_count;
+
+    [ThreadStatic]
+    private static bool thread_done_in_progress;
+
+    [NativeTypeName("std::atomic<mi_thread_data_t*>[32]")]
+    private static readonly nuint* mi_thread_data_cache = create_mi_thread_data_cache();
 
     // MI_DEBUG_FULL
     // MI_OVERRIDE
@@ -33,6 +72,8 @@ public static unsafe partial class Mimalloc
     private static readonly uint MI_XMALLOC = get_app_context_data(nameof(MI_XMALLOC), 0);
 
     private static readonly nint PTRDIFF_MAX = nint.MaxValue;
+
+    private static readonly nuint MI_MAX_ALLOC_SIZE = (nuint)PTRDIFF_MAX;
 
     private static readonly nuint SIZE_MAX = nuint.MaxValue;
 
@@ -78,6 +119,10 @@ public static unsafe partial class Mimalloc
     private static readonly int MADV_DONTNEED = IsUnix ? 4 : 0;
 
     private static readonly int MADV_FREE = IsLinux ? 8 : (IsMacOS ? 5 : 0);
+
+    private static readonly int MADV_FREE_REUSABLE = IsMacOS ? 7 : 0;
+
+    private static readonly int MADV_FREE_REUSE = IsMacOS ? 8 : 0;
 
     private static readonly int MADV_HUGEPAGE = IsLinux ? 14 : 0;
 
@@ -135,10 +180,11 @@ public static unsafe partial class Mimalloc
     //
 
     // Define MI_SECURE to enable security mitigations
-    // * MI_SECURE = 1  // guard page around metadata
-    // * MI_SECURE = 2  // guard page around each mimalloc page
-    // * MI_SECURE = 3  // encode free lists (detect corrupted free list (buffer overflow), and invalid pointer free)
-    // * MI_SECURE = 4  // checks for double free. (may be more expensive)
+    // * MI_SECURE = 1  // guard page around metadata and randomize arena allocation addresses
+    // * MI_SECURE = 2  // randomize relative allocation addresses within mimalloc pages
+    // * MI_SECURE = 3  // encode free lists (detect corrupted free lists and invalid pointer frees)
+    // * MI_SECURE = 4  // check for double frees
+    // * MI_SECURE = 5  // guard page at the end of each mimalloc page
     private static readonly uint MI_SECURE = get_app_context_data(nameof(MI_SECURE), 0);
 
     // Define MI_DEBUG for debug mode
@@ -153,7 +199,9 @@ public static unsafe partial class Mimalloc
 
     // Reserve extra padding at the end of each block to be more resilient against heap block overflows.
     // The padding can detect byte-precise buffer overflow on free.
-    private static readonly uint MI_PADDING = get_app_context_data(nameof(MI_PADDING), (MI_DEBUG >= 1) ? 1u : 0u);
+    private static readonly uint MI_PADDING = get_app_context_data(nameof(MI_PADDING), ((MI_SECURE >= 3) || (MI_DEBUG >= 1)) ? 1u : 0u);
+
+    private static readonly uint MI_PADDING_CHECK = get_app_context_data(nameof(MI_PADDING_CHECK), ((MI_PADDING > 0) && ((MI_SECURE >= 3) || (MI_DEBUG >= 1))) ? 1u : 0u);
 
     // Encoded free lists allow detection of corrupted free lists
     // and can detect buffer overflows, modify after free, and double `free`s.
@@ -176,6 +224,9 @@ public static unsafe partial class Mimalloc
 
     private static readonly nuint MI_SEGMENT_SIZE = (nuint)1 << MI_SEGMENT_SHIFT;
     private static readonly nuint MI_SEGMENT_MASK = MI_SEGMENT_SIZE - 1;
+    private static readonly nuint MI_BLOCK_ALIGNMENT_MAX = MI_SEGMENT_SIZE / 2;
+    private static readonly nuint MI_SEGMENT_MAP_MAX_ADDRESS = Environment.Is64BitProcess ? ((nuint)48 << 40) : uint.MaxValue;
+    private static readonly nuint MI_SEGMENT_MAP_WSIZE = (MI_SEGMENT_MAP_MAX_ADDRESS / MI_SEGMENT_SIZE) / (MI_INTPTR_SIZE * 8);
 
     private static readonly nuint MI_SMALL_PAGE_SIZE = (nuint)1 << MI_SMALL_PAGE_SHIFT;
     private static readonly nuint MI_MEDIUM_PAGE_SIZE = (nuint)1 << MI_MEDIUM_PAGE_SHIFT;
@@ -188,15 +239,11 @@ public static unsafe partial class Mimalloc
     // The max object size are checked to not waste more than 12.5% internally over the page sizes.
     // (Except for large pages since huge objects are allocated in 4MiB chunks)
 
-    private static readonly nuint MI_SMALL_OBJ_SIZE_MAX = MI_SMALL_PAGE_SIZE / 4;                    // 16kb
-    private static readonly nuint MI_MEDIUM_OBJ_SIZE_MAX = MI_MEDIUM_PAGE_SIZE / 4;                  // 128kb
-    private static readonly nuint MI_LARGE_OBJ_SIZE_MAX = MI_LARGE_PAGE_SIZE / 2;                    // 2mb
+    private static readonly nuint MI_SMALL_OBJ_SIZE_MAX = MI_SMALL_PAGE_SIZE / 8;                    // 8kb
+    private static readonly nuint MI_MEDIUM_OBJ_SIZE_MAX = MI_MEDIUM_PAGE_SIZE / 8;                  // 64kb
+    private static readonly nuint MI_LARGE_OBJ_SIZE_MAX = MI_LARGE_PAGE_SIZE / 4;                   // 1mb
     private static readonly nuint MI_LARGE_OBJ_WSIZE_MAX = MI_LARGE_OBJ_SIZE_MAX / MI_INTPTR_SIZE;
-    private static readonly nuint MI_HUGE_OBJ_SIZE_MAX = 2 * MI_INTPTR_SIZE * MI_SEGMENT_SIZE;       // (must match MI_REGION_MAX_ALLOC_SIZE in memory.c)
-
-    // Used as a special value to encode block sizes in 32 bits.
-    private static readonly uint MI_HUGE_BLOCK_SIZE = (uint)MI_HUGE_OBJ_SIZE_MAX;
-
+    private static readonly nuint MI_MAX_ALIGN_GUARANTEE = MI_MEDIUM_OBJ_SIZE_MAX;
     private static readonly nuint MI_PADDING_SIZE = (MI_PADDING != 0) ? SizeOf<mi_padding_t>() : 0;
     private static readonly nuint MI_PADDING_WSIZE = (MI_PADDING != 0) ? (MI_PADDING_SIZE + MI_INTPTR_SIZE - 1) / MI_INTPTR_SIZE : 0;
 
@@ -230,52 +277,101 @@ public static unsafe partial class Mimalloc
         // commit per segment directly (4MiB)  (but see also `eager_commit_delay`)
         new mi_option_desc_t { value = 1, init = UNINIT, option = mi_option_eager_commit, name = "eager_commit" },
 
-        new mi_option_desc_t { value = (IsWindows || !Environment.Is64BitProcess) ? 0 : 1, init = UNINIT, option = mi_option_eager_region_commit, name = "eager_region_commit" },
+        new mi_option_desc_t { value = 2, init = UNINIT, option = mi_option_arena_eager_commit, name = "arena_eager_commit" },
 
         // reset decommits memory
-        new mi_option_desc_t { value = (IsWindows || !Environment.Is64BitProcess) ? 1 : 0, init = UNINIT, option = mi_option_reset_decommits, name = "reset_decommits" },
+        new mi_option_desc_t { value = 1, init = UNINIT, option = mi_option_purge_decommits, name = "purge_decommits" },
 
         // use large OS pages, use only with eager commit to prevent fragmentation of VMA's
-        new mi_option_desc_t { value = 0, init = UNINIT, option = mi_option_large_os_pages, name = "large_os_pages" },
+        new mi_option_desc_t { value = 0, init = UNINIT, option = mi_option_allow_large_os_pages, name = "allow_large_os_pages" },
 
         new mi_option_desc_t { value = 0, init = UNINIT, option = mi_option_reserve_huge_os_pages, name = "reserve_huge_os_pages" },
 
-        // cache N segments per thread
-        new mi_option_desc_t { value = 0, init = UNINIT, option = mi_option_segment_cache, name = "segment_cache" },
+        new mi_option_desc_t { value = -1, init = UNINIT, option = mi_option_reserve_huge_os_pages_at, name = "reserve_huge_os_pages_at" },
+
+        new mi_option_desc_t { value = 0, init = UNINIT, option = mi_option_reserve_os_memory, name = "reserve_os_memory" },
+
+        // deprecated: previously cached N segments per thread
+        new mi_option_desc_t { value = 0, init = UNINIT, option = mi_option_deprecated_segment_cache, name = "deprecated_segment_cache" },
 
         // reset page memory on free
-        new mi_option_desc_t { value = 1, init = UNINIT, option = mi_option_page_reset, name = "page_reset" },
+        new mi_option_desc_t { value = 0, init = UNINIT, option = mi_option_deprecated_page_reset, name = "deprecated_page_reset" },
 
         // reset free page memory when a thread terminates
-        new mi_option_desc_t { value = 0, init = UNINIT, option = mi_option_abandoned_page_reset, name = "abandoned_page_reset" },
+        new mi_option_desc_t { value = 0, init = UNINIT, option = mi_option_abandoned_page_purge, name = "abandoned_page_purge" },
 
         // reset segment memory on free (needs eager commit)
-        new mi_option_desc_t { value = 0, init = UNINIT, option = mi_option_segment_reset, name = "segment_reset" },
+        new mi_option_desc_t { value = 0, init = UNINIT, option = mi_option_deprecated_segment_reset, name = "deprecated_segment_reset" },
 
         // the first N segments per thread are not eagerly committed
         new mi_option_desc_t { value = 1, init = UNINIT, option = mi_option_eager_commit_delay, name = "eager_commit_delay" },
 
         // reset delay in milli-seconds
-        new mi_option_desc_t { value = 100, init = UNINIT, option = mi_option_reset_delay, name = "reset_delay" },
+        new mi_option_desc_t { value = 10, init = UNINIT, option = mi_option_purge_delay, name = "purge_delay" },
 
         // 0 = use available numa nodes, otherwise use at most N nodes.
         new mi_option_desc_t { value = 0,   init = UNINIT, option = mi_option_use_numa_nodes, name = "use_numa_nodes" },
+
+        // 1 = do not use OS memory for allocation (but only reserved arenas)
+        new mi_option_desc_t { value = 0,   init = UNINIT, option = mi_option_disallow_os_alloc, name = "disallow_os_alloc" },
 
         // only apple specific for now but might serve more or less related purpose
         new mi_option_desc_t { value = 100, init = UNINIT, option = mi_option_os_tag, name = "os_tag" },
 
         // maximum errors that are output
-        new mi_option_desc_t { value = 16,  init = UNINIT, option = mi_option_max_errors, name = "max_errors" }
+        new mi_option_desc_t { value = 32, init = UNINIT, option = mi_option_max_errors, name = "max_errors" },
+
+        // maximum warnings that are output
+        new mi_option_desc_t { value = 32,  init = UNINIT, option = mi_option_max_warnings, name = "max_warnings" },
+
+        new mi_option_desc_t { value = 10, init = UNINIT, option = mi_option_max_segment_reclaim, name = "max_segment_reclaim" },
+
+        new mi_option_desc_t { value = 0, init = UNINIT, option = mi_option_destroy_on_exit, name = "destroy_on_exit" },
+
+        // reserve memory N KiB at a time
+        new mi_option_desc_t { value = Environment.Is64BitProcess ? (1024 * 1024) : (128 * 1024), init = UNINIT, option = mi_option_arena_reserve, name = "arena_reserve" },
+
+        // reset/decommit delay in milliseconds for arena allocations
+        new mi_option_desc_t { value = 10, init = UNINIT, option = mi_option_arena_purge_mult, name = "arena_purge_mult" },
+
+        new mi_option_desc_t { value = 1, init = UNINIT, option = mi_option_purge_extend_delay, name = "purge_extend_delay" },
+
+        new mi_option_desc_t { value = 0, init = UNINIT, option = mi_option_abandoned_reclaim_on_free, name = "abandoned_reclaim_on_free" },
+
+        new mi_option_desc_t { value = 0, init = UNINIT, option = mi_option_disallow_arena_alloc, name = "disallow_arena_alloc" },
+
+        new mi_option_desc_t { value = 400, init = UNINIT, option = mi_option_retry_on_oom, name = "retry_on_oom" },
+
+        new mi_option_desc_t { value = 0, init = UNINIT, option = mi_option_visit_abandoned, name = "visit_abandoned" },
+
+        new mi_option_desc_t { value = 0, init = UNINIT, option = mi_option_guarded_min, name = "guarded_min" },
+
+        new mi_option_desc_t { value = (int)GiB, init = UNINIT, option = mi_option_guarded_max, name = "guarded_max" },
+
+        new mi_option_desc_t { value = 0, init = UNINIT, option = mi_option_guarded_precise, name = "guarded_precise" },
+
+        new mi_option_desc_t { value = 0, init = UNINIT, option = mi_option_guarded_sample_rate, name = "guarded_sample_rate" },
+
+        new mi_option_desc_t { value = 0, init = UNINIT, option = mi_option_guarded_sample_seed, name = "guarded_sample_seed" },
+
+        new mi_option_desc_t { value = 0, init = UNINIT, option = mi_option_target_segments_per_thread, name = "target_segments_per_thread" },
+
+        new mi_option_desc_t { value = 10000, init = UNINIT, option = mi_option_generic_collect, name = "generic_collect" },
+
+        new mi_option_desc_t { value = OperatingSystem.IsAndroid() ? 0 : 1, init = UNINIT, option = mi_option_allow_thp, name = "allow_thp" }
     ];
 
-    // stop outputting errors after this
-    [NativeTypeName("uintptr_t")]
-    private static readonly nuint mi_max_error_count = (nuint)mi_option_get(mi_option_max_errors);
+    // stop outputting errors and warnings after their respective limits
+    [NativeTypeName("long")]
+    private static readonly long mi_max_error_count = mi_option_get(mi_option_max_errors);
+
+    [NativeTypeName("long")]
+    private static readonly long mi_max_warning_count = mi_option_get(mi_option_max_warnings);
 
     // For now, don't register output from multiple threads.
 
     [NativeTypeName("mi_output_fun* volatile")]
-    private static volatile mi_output_fun mi_out_default = mi_out_stderr;
+    private static volatile mi_output_fun? mi_out_default = mi_out_stderr;
 
     [NativeTypeName("std::atomic<void*>")]
     private static volatile nuint mi_out_arg = 0;
@@ -283,6 +379,9 @@ public static unsafe partial class Mimalloc
     // when MAX_ERROR_COUNT stop emitting errors and warnings
     [NativeTypeName("std::atomic<uintptr_t>")]
     private static volatile nuint error_count = 0;
+
+    [NativeTypeName("std::atomic<uintptr_t>")]
+    private static volatile nuint warning_count = 0;
 
     [NativeTypeName("mi_error_fun* volatile")]
 
@@ -308,7 +407,9 @@ public static unsafe partial class Mimalloc
     // may lead to allocation itself on some platforms)
     // --------------------------------------------------------
 
-    private static mi_stats_t _mi_stats_main;
+    private static mi_stats_internal_t _mi_stats_main;
+
+    private static readonly mi_subproc_t* _mi_subproc_default = create_mi_subproc_default();
 
     private static readonly mi_heap_t._pages_free_direct_e__FixedBuffer* _mi_heap_empty_pages_free_direct = create_mi_heap_empty_pages_free_direct();
 
@@ -338,19 +439,32 @@ public static unsafe partial class Mimalloc
       Arena allocation
     ----------------------------------------------------------- */
 
-    private static readonly nuint MI_ARENA_BLOCK_SIZE = 8 * MI_SEGMENT_ALIGN;                           // 32MiB
-    private static readonly nuint MI_ARENA_MAX_OBJ_SIZE = MI_BITMAP_FIELD_BITS * MI_ARENA_BLOCK_SIZE;   // 2GiB
-    private static readonly nuint MI_ARENA_MIN_OBJ_SIZE = MI_ARENA_BLOCK_SIZE / 2;                      // 16MiB
+    private static readonly nuint MI_ARENA_BLOCK_SIZE = MI_SEGMENT_SIZE;
+    private static readonly nuint MI_ARENA_MIN_OBJ_SIZE = MI_ARENA_BLOCK_SIZE / 2;
 
-    // not more than 256 (since we use 8 bits in the memid)
-    private const nuint MI_MAX_ARENAS = 64;
+    // Limited as the reservation exponentially increases and takes up static memory
+    private const nuint MI_MAX_ARENAS = 255;
+
+    private static readonly nuint MI_ARENA_STATIC_MAX = Environment.Is64BitProcess ? 8u * 1024u : 4u * 1024u;
+
+    private static readonly byte* mi_arena_static = create_mi_arena_static();
+
+    [NativeTypeName("std::atomic<size_t>")]
+    private static volatile nuint mi_arena_static_top;
 
     // The available arenas
     [NativeTypeName("std::atomic<mi_arena_t*>")]
     private static readonly nuint* mi_arenas = create_mi_arenas();
 
+    private static readonly nuint* mi_segment_map = create_mi_segment_map();
+
     [NativeTypeName("std::atomic<uintptr_t>")]
     private static volatile nuint mi_arena_count = 0;
+
+    [NativeTypeName("std::atomic<size_t>")]
+    private static volatile nuint mi_abandoned_segment_count;
+
+    private static volatile nuint mi_arena_purge_guard;
 
     //
     // bitmap.inc
@@ -383,13 +497,15 @@ public static unsafe partial class Mimalloc
     [NativeTypeName("size_t")]
     private static readonly nuint large_os_page_size = get_large_os_page_size();
 
+    private static readonly nuint os_virtual_address_bits = get_os_virtual_address_bits();
+
     [NativeTypeName("std::atomic<uintptr_t>")]
     private static volatile nuint large_page_try_ok = 0;
 
-    private static bool mi_huge_pages_available = !IsUnix || (MAP_HUGE_1GB != 0);
+    private static volatile int mi_huge_pages_available = (!IsUnix || (MAP_HUGE_1GB != 0)) ? 1 : 0;
 
     [NativeTypeName("std::atomic<uintptr_t>")]
-    private static volatile nuint advice = (nuint)MADV_FREE;
+    private static volatile nuint advice = (nuint)((MADV_FREE_REUSABLE != 0) ? MADV_FREE_REUSABLE : MADV_FREE);
 
     // To ensure proper alignment, use our own area for huge OS pages
 
@@ -409,7 +525,7 @@ public static unsafe partial class Mimalloc
     private static readonly nuint MI_MAX_SLICES = (nuint)1 << MI_MAX_SLICE_SHIFT;
 
     // extend at least by this many
-    private static readonly nuint MI_MIN_EXTEND = (MI_SECURE > 0) ? (8 * MI_SECURE) : 1;
+    private static readonly nuint MI_MIN_EXTEND = (MI_SECURE >= 2) ? (8 * MI_SECURE) : 1;
 
     [NativeTypeName("mi_deferred_free_fun* volatile")]
     private static volatile mi_deferred_free_fun? deferred_free = null;
@@ -429,30 +545,7 @@ public static unsafe partial class Mimalloc
 
     private static readonly bool MI_ALIGN2W = !MI_ALIGN4W && (MI_MAX_ALIGN_SIZE > MI_INTPTR_SIZE);
 
-    //
-    // region.c
-    //
-
-    // Constants
-
-    // 64KiB || 1KiB for the region map 
-    private static readonly nuint MI_HEAP_REGION_MAX_SIZE = Environment.Is64BitProcess ? unchecked(256 * GiB) : (3 * GiB);
-
     private static readonly nuint MI_SEGMENT_ALIGN = MI_SEGMENT_SIZE;
-
-    private static readonly nuint MI_REGION_MAX_BLOCKS = MI_BITMAP_FIELD_BITS;
-    private static readonly nuint MI_REGION_SIZE = MI_SEGMENT_SIZE * MI_BITMAP_FIELD_BITS;              // 256MiB  (64MiB on 32 bits)
-    private static readonly nuint MI_REGION_MAX = MI_HEAP_REGION_MAX_SIZE / MI_REGION_SIZE;             // 1024  (48 on 32 bits)
-    private static readonly nuint MI_REGION_MAX_OBJ_BLOCKS = MI_REGION_MAX_BLOCKS / 4;                  // 64MiB
-    private static readonly nuint MI_REGION_MAX_OBJ_SIZE = MI_REGION_MAX_OBJ_BLOCKS * MI_SEGMENT_SIZE;
-
-    // The region map
-    [NativeTypeName("mem_region_t [MI_REGION_MAX]")]
-    private static readonly mem_region_t* regions = create_regions();
-
-    // Allocated regions
-    [NativeTypeName("std::atomic<uintptr_t>")]
-    private static volatile nuint regions_count = 0;
 
     //
     // segment.c
@@ -460,7 +553,6 @@ public static unsafe partial class Mimalloc
 
     // Use the bottom 20-bits (on 64-bit) of the aligned segment pointers
     // to put in a tag that increments on update to avoid the A-B-A problem.
-    private static readonly nuint MI_TAGGED_MASK = MI_SEGMENT_MASK;
 
     //
     // stats.c
