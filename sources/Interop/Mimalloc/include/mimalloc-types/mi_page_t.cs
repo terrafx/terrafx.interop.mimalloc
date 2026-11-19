@@ -26,11 +26,8 @@ namespace TerraFX.Interop.Mimalloc;
 // Notes: 
 // - Access is optimized for `mi_free` and `mi_page_alloc` (in `alloc.c`)
 // - Using `ushort` does not seem to slow things down
-// - The size is 8 words on 64-bit which helps the page index calculations
-//   (and 10 words on 32-bit, and encoded free lists add 2 words. Sizes 10 
-//    and 12 are still good for address calculation)
-// - To limit the structure size, the `xblock_size` is 32-bits only; for 
-//   blocks > MI_HUGE_BLOCK_SIZE the size is determined from the segment page size
+// - The size is 10 words on 64-bit which helps the page index calculations
+//   (and 14 words on 32-bit, and encoded free lists add 2 words)
 // - `thread_free` uses the bottom bits as a delayed-free flags to optimize
 //   concurrent frees where only the first concurrent free adds to the owning
 //   heap `thread_delayed_free` list (see `alloc.c:mi_free_block_mt`).
@@ -63,9 +60,9 @@ internal unsafe struct mi_page_t
         }
     }
 
-    // `true` if the page memory was reset
+    // `true` if the page virtual memory is committed
     [NativeTypeName("uint8_t : 1")]
-    public bool is_reset
+    public bool is_committed
     {
         readonly get
         {
@@ -78,9 +75,9 @@ internal unsafe struct mi_page_t
         }
     }
 
-    // `true` if the page virtual memory is committed
+    // `true` if the page was initially zero initialized
     [NativeTypeName("uint8_t : 1")]
-    public bool is_committed
+    public bool is_zero_init
     {
         readonly get
         {
@@ -93,9 +90,8 @@ internal unsafe struct mi_page_t
         }
     }
 
-    // `true` if the page was zero initialized
     [NativeTypeName("uint8_t : 1")]
-    public bool is_zero_init
+    public bool is_huge
     {
         readonly get
         {
@@ -118,14 +114,25 @@ internal unsafe struct mi_page_t
     [NativeTypeName("uint16_t")]
     public ushort reserved;
 
+    // number of blocks in use (including blocks in `local_free` and `thread_free`)
+    [NativeTypeName("uint16_t")]
+    public ushort used;
+
     // `in_full` and `has_aligned` flags (8 bits)
     public mi_page_flags_t flags;
+
+    // shift for power-of-two block sizes
+    public byte block_size_shift;
+
+    // tag of the owning heap, used to separate allocation types
+    [NativeTypeName("uint8_t")]
+    public byte heap_tag;
 
     private byte _bitfield2;
 
     // `true` if the blocks in the free list are zero initialized
     [NativeTypeName("uint8_t : 1")]
-    public bool is_zero
+    public bool free_is_zero
     {
         readonly get
         {
@@ -156,20 +163,20 @@ internal unsafe struct mi_page_t
     // list of available free blocks (`malloc` allocates from this list)
     public mi_block_t* free;
 
+    // list of deferred free blocks by this thread (migrates to `free`)
+    public mi_block_t* local_free;
+
+    // size available in each block (always `>0`)
+    [NativeTypeName("size_t")]
+    public nuint block_size;
+
+    // start of the page area containing the blocks
+    [NativeTypeName("uint8_t*")]
+    public byte* page_start;
+
     // two random keys to encode the free lists (see `_mi_block_next`)
     [NativeTypeName("uintptr_t [2]")]
     public _keys_e__FixedBuffer keys;
-
-    // number of blocks in use (including blocks in `local_free` and `thread_free`)
-    [NativeTypeName("uint32_t")]
-    public uint used;
-
-    // size available in each block (always `>0`)
-    [NativeTypeName("uint32_t")]
-    public uint xblock_size;
-
-    // list of deferred free blocks by this thread (migrates to `free`)
-    public mi_block_t* local_free;
 
     // list of deferred free blocks freed by other threads
     [NativeTypeName("std::atomic<mi_thread_free_t>")]

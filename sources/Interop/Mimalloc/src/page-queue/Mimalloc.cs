@@ -4,7 +4,6 @@
 // The original code is Copyright © Microsoft. All rights reserved. Licensed under the MIT License (MIT).
 
 using System;
-using System.Numerics;
 using System.Runtime.CompilerServices;
 using static TerraFX.Interop.Mimalloc.mi_delayed_t;
 using static TerraFX.Interop.Mimalloc.mi_page_kind_t;
@@ -30,26 +29,6 @@ public static unsafe partial class Mimalloc
       Bins
     ----------------------------------------------------------- */
 
-    // Bit scan reverse: return the index of the highest bit.
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    [return: NativeTypeName("uint8_t")]
-    private static byte mi_bsr32([NativeTypeName("uint32_t")] uint x) => (byte)(31 - BitOperations.LeadingZeroCount(x));
-
-    // Bit scan reverse: return the index of the highest bit.
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static partial byte _mi_bsr(nuint x)
-    {
-        if (Environment.Is64BitProcess)
-        {
-            return (byte)(63 - BitOperations.LeadingZeroCount(x));
-        }
-        else
-        {
-            return mi_bsr32((uint)x);
-        }
-    }
-
     // Return the bin for a given field size.
     // Returns MI_BIN_HUGE if the size is too large.
     // We use `wsize` for the size in "machine word sizes",
@@ -57,47 +36,48 @@ public static unsafe partial class Mimalloc
     private static partial byte _mi_bin(nuint size)
     {
         nuint wsize = _mi_wsize_from_size(size);
-        byte bin;
 
-        if (wsize <= 1)
+        if (MI_ALIGN4W)
         {
-            bin = 1;
-        }
-        else if ((MI_ALIGN4W && (wsize <= 4)) || (MI_ALIGN2W && (wsize <= 8)))
-        {
-            // round to double word sizes
-            bin = (byte)((wsize + 1) & ~(nuint)1);
-        }
-        else if (!MI_ALIGN4W && !MI_ALIGN2W && (wsize <= 8))
-        {
-            bin = (byte)wsize;
-        }
-        else if (wsize > MI_LARGE_OBJ_WSIZE_MAX)
-        {
-            bin = MI_BIN_HUGE;
-        }
-        else
-        {
-            if (MI_ALIGN4W && (wsize <= 16))
+            if (wsize <= 4)
             {
-                // round to 4x word sizes
-                wsize = (wsize + 3) & ~(nuint)3;
+                return (wsize <= 1) ? (byte)1 : (byte)((wsize + 1) & ~(nuint)1);
             }
-
-            wsize--;
-
-            // find the highest bit
-            byte b = mi_bsr32((uint)wsize);
-
-            // and use the top 3 bits to determine the bin (~12.5% worst internal fragmentation).
-            // - adjust with 3 because we use do not round the first 8 sizes
-            //   which each get an exact bin
-            bin = (byte)((b << 2) + (byte)((wsize >> (b - 2)) & 0x03) - 3);
-
-            mi_assert_internal((MI_DEBUG > 1) && (bin < MI_BIN_HUGE));
+        }
+        else if (MI_ALIGN2W)
+        {
+            if (wsize <= 8)
+            {
+                return (wsize <= 1) ? (byte)1 : (byte)((wsize + 1) & ~(nuint)1);
+            }
+        }
+        else if (wsize <= 8)
+        {
+            return (wsize == 0) ? (byte)1 : (byte)wsize;
         }
 
-        mi_assert_internal((MI_DEBUG > 1) && (bin > 0) && (bin <= MI_BIN_HUGE));
+        if (wsize > MI_LARGE_OBJ_WSIZE_MAX)
+        {
+            return MI_BIN_HUGE;
+        }
+
+        if (MI_ALIGN4W && (wsize <= 16))
+        {
+            // round to 4x word sizes
+            wsize = (wsize + 3) & ~(nuint)3;
+        }
+
+        wsize--;
+
+        // find the highest bit
+        byte b = (byte)mi_bsr(wsize);
+
+        // and use the top 3 bits to determine the bin (~12.5% worst internal fragmentation).
+        // - adjust with 3 because we use do not round the first 8 sizes
+        //   which each get an exact bin
+        byte bin = (byte)(((nuint)b << 2) + ((wsize >> (b - 2)) & (nuint)0x03) - (nuint)3);
+
+        mi_assert_internal((MI_DEBUG > 1) && (bin > 0) && (bin < MI_BIN_HUGE));
         return bin;
     }
 
@@ -108,18 +88,23 @@ public static unsafe partial class Mimalloc
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static partial nuint _mi_bin_size(byte bin) => (&_mi_heap_empty_pages->e0)[bin].block_size;
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static byte _mi_page_stats_bin(mi_page_t* page)
+        => mi_page_is_huge(page) ? MI_BIN_HUGE : _mi_bin(mi_page_block_size(page));
+
     // Good size for allocation
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static partial nuint mi_good_size(nuint size)
     {
-        if (size <= MI_LARGE_OBJ_SIZE_MAX)
+        if (size <= (MI_LARGE_OBJ_SIZE_MAX - MI_PADDING_SIZE))
         {
-            return _mi_bin_size(_mi_bin(size));
+            return _mi_bin_size(_mi_bin(size + MI_PADDING_SIZE));
         }
-        else
+        else if (size <= (MI_MAX_ALLOC_SIZE - MI_PADDING_SIZE))
         {
-            return _mi_align_up(size, _mi_os_page_size());
+            return _mi_align_up(size + MI_PADDING_SIZE, _mi_os_page_size());
         }
+        return size;
     }
 
     private static bool mi_page_queue_contains(mi_page_queue_t* queue, [NativeTypeName("const mi_page_t*")] mi_page_t* page)
@@ -154,14 +139,14 @@ public static unsafe partial class Mimalloc
 
     private static mi_page_queue_t* mi_page_queue_of([NativeTypeName("const mi_page_t*")] mi_page_t* page)
     {
-        byte bin = mi_page_is_in_full(page) ? MI_BIN_FULL : _mi_bin(page->xblock_size);
+        byte bin = mi_page_is_in_full(page) ? MI_BIN_FULL : (mi_page_is_huge(page) ? MI_BIN_HUGE : _mi_bin(mi_page_block_size(page)));
         mi_heap_t* heap = mi_page_heap(page);
 
         mi_assert_internal((MI_DEBUG > 1) && heap != null && bin <= MI_BIN_FULL);
 
         mi_page_queue_t* pq = &heap->pages.e0 + bin;
 
-        mi_assert_internal((MI_DEBUG > 1) && (bin >= MI_BIN_HUGE || page->xblock_size == pq->block_size));
+        mi_assert_internal((MI_DEBUG > 1) && (bin >= MI_BIN_HUGE || mi_page_block_size(page) == pq->block_size));
         mi_assert_expensive((MI_DEBUG > 2) && mi_page_queue_contains(pq, page));
 
         return pq;
@@ -169,11 +154,11 @@ public static unsafe partial class Mimalloc
 
     private static mi_page_queue_t* mi_heap_page_queue_of(mi_heap_t* heap, [NativeTypeName("const mi_page_t*")] mi_page_t* page)
     {
-        byte bin = mi_page_is_in_full(page) ? MI_BIN_FULL : _mi_bin(page->xblock_size);
+        byte bin = mi_page_is_in_full(page) ? MI_BIN_FULL : (mi_page_is_huge(page) ? MI_BIN_HUGE : _mi_bin(mi_page_block_size(page)));
         mi_assert_internal((MI_DEBUG > 1) && (bin <= MI_BIN_FULL));
 
         mi_page_queue_t* pq = &heap->pages.e0 + bin;
-        mi_assert_internal((MI_DEBUG > 1) && (mi_page_is_in_full(page) || page->xblock_size == pq->block_size));
+        mi_assert_internal((MI_DEBUG > 1) && (mi_page_is_in_full(page) || (mi_page_is_huge(page) && mi_page_queue_is_huge(pq)) || (mi_page_block_size(page) == pq->block_size)));
 
         return pq;
     }
@@ -253,7 +238,7 @@ public static unsafe partial class Mimalloc
     {
         mi_assert_internal((MI_DEBUG > 1) && (page != null));
         mi_assert_expensive((MI_DEBUG > 2) && mi_page_queue_contains(queue, page));
-        mi_assert_internal((MI_DEBUG > 1) && ((page->xblock_size == queue->block_size) || ((page->xblock_size > MI_LARGE_OBJ_SIZE_MAX) && mi_page_queue_is_huge(queue)) || (mi_page_is_in_full(page) && mi_page_queue_is_full(queue))));
+        mi_assert_internal((MI_DEBUG > 1) && ((mi_page_block_size(page) == queue->block_size) || (mi_page_is_huge(page) && mi_page_queue_is_huge(queue)) || (mi_page_is_in_full(page) && mi_page_queue_is_full(queue))));
 
         mi_heap_t* heap = mi_page_heap(page);
 
@@ -294,8 +279,7 @@ public static unsafe partial class Mimalloc
     {
         mi_assert_internal((MI_DEBUG > 1) && (mi_page_heap(page) == heap));
         mi_assert_internal((MI_DEBUG > 1) && (!mi_page_queue_contains(queue, page)));
-        mi_assert_internal((MI_DEBUG > 1) && (_mi_page_segment(page)->page_kind != MI_PAGE_HUGE));
-        mi_assert_internal((MI_DEBUG > 1) && ((page->xblock_size == queue->block_size) || ((page->xblock_size > MI_LARGE_OBJ_SIZE_MAX) && mi_page_queue_is_huge(queue)) || (mi_page_is_in_full(page) && mi_page_queue_is_full(queue))));
+        mi_assert_internal((MI_DEBUG > 1) && ((mi_page_block_size(page) == queue->block_size) || (mi_page_is_huge(page) && mi_page_queue_is_huge(queue)) || (mi_page_is_in_full(page) && mi_page_queue_is_full(queue))));
 
         mi_page_set_in_full(page, mi_page_queue_is_full(queue));
         // mi_atomic_store_ptr_release(ref page->heap, heap);
@@ -320,12 +304,28 @@ public static unsafe partial class Mimalloc
         heap->page_count++;
     }
 
+    private static void mi_page_queue_move_to_front(mi_heap_t* heap, mi_page_queue_t* queue, mi_page_t* page)
+    {
+        mi_assert_internal((MI_DEBUG > 1) && (mi_page_heap(page) == heap));
+        mi_assert_internal((MI_DEBUG > 1) && mi_page_queue_contains(queue, page));
+
+        if (queue->first == page)
+        {
+            return;
+        }
+
+        mi_page_queue_remove(queue, page);
+        mi_page_queue_push(heap, queue, page);
+        mi_assert_internal((MI_DEBUG > 1) && (queue->first == page));
+    }
+
     private static void mi_page_queue_enqueue_from(mi_page_queue_t* to, mi_page_queue_t* from, mi_page_t* page)
     {
         mi_assert_internal((MI_DEBUG > 1) && (page != null));
         mi_assert_expensive((MI_DEBUG > 2) && mi_page_queue_contains(from, page));
         mi_assert_expensive((MI_DEBUG > 2) && !mi_page_queue_contains(to, page));
-        mi_assert_internal((MI_DEBUG > 1) && (((page->xblock_size == to->block_size) && page->xblock_size == from->block_size) || ((page->xblock_size == to->block_size) && mi_page_queue_is_full(from)) || ((page->xblock_size == from->block_size) && mi_page_queue_is_full(to)) || ((page->xblock_size > MI_LARGE_OBJ_SIZE_MAX) && mi_page_queue_is_huge(to)) || ((page->xblock_size > MI_LARGE_OBJ_SIZE_MAX) && mi_page_queue_is_full(to))));
+        nuint block_size = mi_page_block_size(page);
+        mi_assert_internal((MI_DEBUG > 1) && (((block_size == to->block_size) && (block_size == from->block_size)) || ((block_size == to->block_size) && mi_page_queue_is_full(from)) || ((block_size == from->block_size) && mi_page_queue_is_full(to)) || (mi_page_is_huge(page) && mi_page_queue_is_huge(to)) || (mi_page_is_huge(page) && mi_page_queue_is_full(to))));
 
         mi_heap_t* heap = mi_page_heap(page);
 

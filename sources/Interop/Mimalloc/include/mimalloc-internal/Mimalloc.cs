@@ -44,7 +44,7 @@ public static unsafe partial class Mimalloc
 
     private static partial void _mi_random_init([NativeTypeName("mi_random_ctx_t*")] out mi_random_ctx_t ctx);
 
-    private static partial void _mi_random_split([NativeTypeName("mi_random_ctx_t*")] in mi_random_ctx_t ctx, [NativeTypeName("mi_random_ctx_t*")] out mi_random_ctx_t ctx_new);
+    private static partial void _mi_random_split([NativeTypeName("mi_random_ctx_t*")] ref mi_random_ctx_t ctx, [NativeTypeName("mi_random_ctx_t*")] out mi_random_ctx_t ctx_new);
 
     [return: NativeTypeName("uintptr_t")]
     private static partial nuint _mi_random_next([NativeTypeName("mi_random_ctx_t*")] ref mi_random_ctx_t ctx);
@@ -74,35 +74,36 @@ public static unsafe partial class Mimalloc
     //  * void _mi_os_init()
 
     // to allocate thread local data
-    private static partial void* _mi_os_alloc([NativeTypeName("size_t")] nuint size, [NativeTypeName("mi_stats_t*")] ref mi_stats_t tld_stats);
+    private static partial void* _mi_os_alloc([NativeTypeName("size_t")] nuint size, [NativeTypeName("mi_memid_t*")] out mi_memid_t memid, [NativeTypeName("mi_stats_t*")] ref mi_stats_internal_t tld_stats);
 
     // to free thread local data
-    private static partial void _mi_os_free(void* p, [NativeTypeName("size_t")] nuint size, [NativeTypeName("mi_stats_t*")] ref mi_stats_t stats);
+    private static partial void _mi_os_free(void* p, [NativeTypeName("size_t")] nuint size, mi_memid_t memid, [NativeTypeName("mi_stats_t*")] ref mi_stats_internal_t stats);
 
     [return: NativeTypeName("size_t")]
     private static partial nuint _mi_os_good_alloc_size([NativeTypeName("size_t")] nuint size);
 
-    // memory.c
+    [return: NativeTypeName("size_t")]
+    private static partial nuint _mi_os_large_page_size();
 
-    private static partial void* _mi_mem_alloc_aligned([NativeTypeName("size_t")] nuint size, [NativeTypeName("size_t")] nuint alignment, [NativeTypeName("bool*")] ref bool commit, [NativeTypeName("bool*")] ref bool large, [NativeTypeName("bool*")] out bool is_zero, [NativeTypeName("size_t*")] out nuint memid, mi_os_tld_t* tld);
+    private static partial bool _mi_os_protect(void* addr, [NativeTypeName("size_t")] nuint size);
 
-    private static partial void _mi_mem_free(void* p, [NativeTypeName("size_t")] nuint size, [NativeTypeName("size_t")] nuint id, bool full_commit, bool any_reset, mi_os_tld_t* tld);
+    private static partial bool _mi_os_unprotect(void* addr, [NativeTypeName("size_t")] nuint size);
 
-    private static partial bool _mi_mem_reset(void* p, [NativeTypeName("size_t")] nuint size, mi_os_tld_t* tld);
+    private static partial bool _mi_os_commit(void* addr, [NativeTypeName("size_t")] nuint size, [NativeTypeName("bool*")] out bool is_zero, [NativeTypeName("mi_stats_t*")] ref mi_stats_internal_t tld_stats);
 
-    private static partial bool _mi_mem_unreset(void* p, [NativeTypeName("size_t")] nuint size, [NativeTypeName("bool*")] out bool is_zero, mi_os_tld_t* tld);
+    private static partial bool _mi_os_reset(void* addr, [NativeTypeName("size_t")] nuint size, [NativeTypeName("mi_stats_t*")] ref mi_stats_internal_t tld_stats);
 
-    private static partial bool _mi_mem_commit(void* p, [NativeTypeName("size_t")] nuint size, [NativeTypeName("bool*")] out bool is_zero, mi_os_tld_t* tld);
+    private static partial bool _mi_os_unreset(void* addr, [NativeTypeName("size_t")] nuint size, [NativeTypeName("bool*")] out bool is_zero, [NativeTypeName("mi_stats_t*")] ref mi_stats_internal_t tld_stats);
 
-    private static partial bool _mi_mem_protect(void* p, [NativeTypeName("size_t")] nuint size);
+    private static partial void* _mi_arena_alloc([NativeTypeName("size_t")] nuint size, [NativeTypeName("bool*")] ref bool commit, [NativeTypeName("bool*")] ref bool large, [NativeTypeName("bool*")] out bool is_pinned, [NativeTypeName("bool*")] out bool is_zero, int req_arena_id, [NativeTypeName("mi_memid_t*")] out mi_memid_t memid, mi_os_tld_t* tld);
 
-    private static partial bool _mi_mem_unprotect(void* p, [NativeTypeName("size_t")] nuint size);
+    private static partial void* _mi_arena_alloc_aligned([NativeTypeName("size_t")] nuint size, [NativeTypeName("size_t")] nuint alignment, [NativeTypeName("size_t")] nuint align_offset, [NativeTypeName("bool*")] ref bool commit, [NativeTypeName("bool*")] ref bool large, [NativeTypeName("bool*")] out bool is_pinned, [NativeTypeName("bool*")] out bool is_zero, int req_arena_id, [NativeTypeName("mi_memid_t*")] out mi_memid_t memid, mi_os_tld_t* tld);
 
-    private static partial void _mi_mem_collect(mi_os_tld_t* tld);
+    private static partial void _mi_arena_free(void* p, [NativeTypeName("size_t")] nuint size, [NativeTypeName("size_t")] nuint alignment, [NativeTypeName("size_t")] nuint align_offset, mi_memid_t memid, [NativeTypeName("size_t")] nuint committed_size, [NativeTypeName("mi_stats_t*")] ref mi_stats_internal_t stats);
 
     // "segment.c"
 
-    private static partial mi_page_t* _mi_segment_page_alloc(mi_heap_t* heap, [NativeTypeName("size_t")] nuint block_size, mi_segments_tld_t* tld, mi_os_tld_t* os_tld);
+    private static partial mi_page_t* _mi_segment_page_alloc(mi_heap_t* heap, [NativeTypeName("size_t")] nuint block_size, [NativeTypeName("size_t")] nuint page_alignment, mi_segments_tld_t* tld, mi_os_tld_t* os_tld);
 
     private static partial void _mi_segment_page_free(mi_page_t* page, bool force, mi_segments_tld_t* tld);
 
@@ -110,11 +111,11 @@ public static unsafe partial class Mimalloc
 
     // page start for any page
     [return: NativeTypeName("uint8_t*")]
-    private static partial byte* _mi_segment_page_start([NativeTypeName("const mi_segment_t*")] mi_segment_t* segment, [NativeTypeName("const mi_page_t*")] mi_page_t* page, [NativeTypeName("size_t")] nuint block_size, [NativeTypeName("size_t*")] out nuint page_size, [NativeTypeName("size_t*")] out nuint pre_size);
+    private static partial byte* _mi_segment_page_start([NativeTypeName("const mi_segment_t*")] mi_segment_t* segment, [NativeTypeName("const mi_page_t*")] mi_page_t* page, [NativeTypeName("size_t*")] out nuint page_size, [NativeTypeName("size_t*")] out nuint pre_size);
 
-    private static partial void _mi_segment_huge_page_free(mi_segment_t* segment, mi_page_t* page, mi_block_t* block);
+    private static partial void _mi_segment_huge_page_reset(mi_segment_t* segment, mi_page_t* page, mi_block_t* block);
 
-    private static partial void _mi_segment_thread_collect(mi_segments_tld_t* tld);
+    private static partial void _mi_segments_collect(bool force, mi_segments_tld_t* tld);
 
     private static partial void _mi_abandoned_reclaim_all(mi_heap_t* heap, mi_segments_tld_t* tld);
 
@@ -122,7 +123,7 @@ public static unsafe partial class Mimalloc
 
     // "page.c"
 
-    private static partial void* _mi_malloc_generic(mi_heap_t* heap, [NativeTypeName("size_t")] nuint size);
+    private static partial void* _mi_malloc_generic(mi_heap_t* heap, [NativeTypeName("size_t")] nuint size, bool zero, [NativeTypeName("size_t")] nuint huge_alignment);
 
     // free the page if there are no other pages with many free blocks
     private static partial void _mi_page_retire(mi_page_t* page);
@@ -135,11 +136,15 @@ public static unsafe partial class Mimalloc
     // abandon the page, to be picked up by another thread...
     private static partial void _mi_page_abandon(mi_page_t* page, mi_page_queue_t* pq);
 
-    private static partial void _mi_heap_delayed_free(mi_heap_t* heap);
+    private static partial void _mi_heap_delayed_free_all(mi_heap_t* heap);
+
+    private static partial bool _mi_heap_delayed_free_partial(mi_heap_t* heap);
 
     private static partial void _mi_heap_collect_retired(mi_heap_t* heap, bool force);
 
     private static partial void _mi_page_use_delayed_free(mi_page_t* page, mi_delayed_t delay, bool override_never);
+
+    private static partial bool _mi_page_try_use_delayed_free(mi_page_t* page, mi_delayed_t delay, bool override_never);
 
     [return: NativeTypeName("size_t")]
     private static partial nuint _mi_page_queue_append(mi_heap_t* heap, mi_page_queue_t* pq, mi_page_queue_t* append);
@@ -159,10 +164,6 @@ public static unsafe partial class Mimalloc
     [return: NativeTypeName("uint8_t")]
     private static partial byte _mi_bin([NativeTypeName("size_t")] nuint size);
 
-    // bit-scan-right, used on BSD in "os.c"
-    [return: NativeTypeName("uint8_t")]
-    private static partial byte _mi_bsr([NativeTypeName("uintptr_t")] nuint x);
-
     // "heap.c"
 
     private static partial void _mi_heap_destroy_pages(mi_heap_t* heap);
@@ -173,7 +174,7 @@ public static unsafe partial class Mimalloc
 
     // "stats.c"
 
-    private static partial void _mi_stats_done([NativeTypeName("mi_stats_t*")] ref mi_stats_t stats);
+    private static partial void _mi_stats_done([NativeTypeName("mi_stats_t*")] ref mi_stats_internal_t stats);
 
     [return: NativeTypeName("mi_msecs_t")]
     private static partial long _mi_clock_now();
@@ -187,17 +188,22 @@ public static unsafe partial class Mimalloc
     // "alloc.c"
 
     // called from `_mi_malloc_generic`
+    private static partial void* _mi_page_malloc_zero(mi_heap_t* heap, mi_page_t* page, [NativeTypeName("size_t")] nuint size, bool zero);
+
+    // called from `_mi_heap_malloc_aligned`
     private static partial void* _mi_page_malloc(mi_heap_t* heap, mi_page_t* page, [NativeTypeName("size_t")] nuint size);
+
+    private static partial void* _mi_page_malloc_zeroed(mi_heap_t* heap, mi_page_t* page, [NativeTypeName("size_t")] nuint size);
 
     private static partial void* _mi_heap_malloc_zero(mi_heap_t* heap, [NativeTypeName("size_t")] nuint size, bool zero);
 
     private static partial void* _mi_heap_realloc_zero(mi_heap_t* heap, void* p, [NativeTypeName("size_t")] nuint newsize, bool zero);
 
-    private static partial mi_block_t* _mi_page_ptr_unalign([NativeTypeName("const mi_segment_t*")] mi_segment_t* segment, [NativeTypeName("const mi_page_t*")] mi_page_t* page, [NativeTypeName("const void*")] void* p);
+    private static partial void _mi_heap_guarded_init(mi_heap_t* heap);
+
+    private static partial mi_block_t* _mi_page_ptr_unalign([NativeTypeName("const mi_page_t*")] mi_page_t* page, [NativeTypeName("const void*")] void* p);
 
     private static partial bool _mi_free_delayed_block(mi_block_t* block);
-
-    private static partial void _mi_block_zero_init([NativeTypeName("const mi_page_t*")] mi_page_t* page, void* p, [NativeTypeName("size_t")] nuint size);
 
     private static partial bool _mi_page_is_valid(mi_page_t* page);
 
@@ -229,6 +235,16 @@ public static unsafe partial class Mimalloc
 
     // trying to free an invalid pointer
     private const int EINVAL = 22;
+
+    private const int EACCES = 13;
+
+    private const int ENOENT = 2;
+
+    private const int ENOTDIR = 20;
+
+    private const int EIO = 5;
+
+    private const int ENAMETOOLONG = 36;
 
     // count*size overflow
     private const int EOVERFLOW = 75;
@@ -301,7 +317,7 @@ public static unsafe partial class Mimalloc
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static bool mi_mul_overflow([NativeTypeName("size_t")] nuint count, [NativeTypeName("size_t")] nuint size, [NativeTypeName("size_t*")] out nuint total)
     {
-        total = count * size;
+        total = unchecked(count * size);
         return ((size >= MI_MUL_NO_OVERFLOW) || (count >= MI_MUL_NO_OVERFLOW)) && (size > 0) && ((SIZE_MAX / size) < count);
     }
 
@@ -351,8 +367,8 @@ public static unsafe partial class Mimalloc
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static bool mi_heap_is_backing([NativeTypeName("const mi_heap_t")] mi_heap_t* heap) => heap->tld->heap_backing == heap;
 
-    // The following members have not been ported as they aren't needed for .NET:
-    //  * bool mi_heap_is_initialized(mi_heap_t*)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool mi_heap_is_initialized(mi_heap_t* heap) => (heap != null) && (heap->tld != null);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     [return: NativeTypeName("uintptr_t")]
@@ -382,7 +398,11 @@ public static unsafe partial class Mimalloc
 
     // Segment that contains the pointer
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static mi_segment_t* _mi_ptr_segment([NativeTypeName("const void*")] void* p) => (mi_segment_t*)((nuint)p & ~MI_SEGMENT_MASK);
+    private static mi_segment_t* _mi_ptr_segment([NativeTypeName("const void*")] void* p)
+    {
+        mi_assert_internal((MI_DEBUG > 1) && (p != null));
+        return (mi_segment_t*)(((nuint)p - 1) & ~MI_SEGMENT_MASK);
+    }
 
     // Segment belonging to a page
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -399,7 +419,7 @@ public static unsafe partial class Mimalloc
     private static nuint _mi_segment_page_idx_of([NativeTypeName("const mi_segment_t*")] mi_segment_t* segment, [NativeTypeName("const void*")] void* p)
     {
         nint diff = (nint)((nuint)p - (nuint)segment);
-        mi_assert_internal((MI_DEBUG > 1) && (diff >= 0) && ((nuint)diff < MI_SEGMENT_SIZE));
+        mi_assert_internal((MI_DEBUG > 1) && (diff >= 0) && ((nuint)diff <= MI_SEGMENT_SIZE));
 
         nuint idx = (nuint)diff >> (int)segment->page_shift;
 
@@ -420,33 +440,23 @@ public static unsafe partial class Mimalloc
     // Quick page start for initialized pages
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     [return: NativeTypeName("uint8_t*")]
-    private static byte* _mi_page_start([NativeTypeName("const mi_segment_t*")] mi_segment_t* segment, [NativeTypeName("const mi_page_t*")] mi_page_t* page, [NativeTypeName("size_t*")] out nuint page_size)
+    private static byte* mi_page_start([NativeTypeName("const mi_page_t*")] mi_page_t* page)
     {
-        nuint bsize = page->xblock_size;
-        mi_assert_internal((MI_DEBUG > 1) && (bsize > 0) && (bsize % SizeOf<nuint>()) == 0);
-        return _mi_segment_page_start(segment, page, bsize, out page_size, out _);
+        mi_assert_internal((MI_DEBUG > 1) && (page->page_start != null));
+        return page->page_start;
     }
 
     // Get the page containing the pointer
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static mi_page_t* _mi_ptr_page(void* p) => _mi_segment_page_of(_mi_ptr_segment(p), p);
 
-    // Get the block size of a page (special cased for huge objects)
+    // Get the block size of a page
     [return: NativeTypeName("size_t")]
     private static nuint mi_page_block_size([NativeTypeName("const mi_page_t*")] mi_page_t* page)
     {
-        nuint bsize = page->xblock_size;
+        nuint bsize = page->block_size;
         mi_assert_internal((MI_DEBUG > 1) && (bsize > 0));
-
-        if (mi_likely(bsize < MI_HUGE_BLOCK_SIZE))
-        {
-            return bsize;
-        }
-        else
-        {
-            _ = _mi_segment_page_start(_mi_page_segment(page), page, bsize, out nuint psize, out _);
-            return psize;
-        }
+        return bsize;
     }
 
     // Get the usable block size of a page without fixed padding.
@@ -454,6 +464,13 @@ public static unsafe partial class Mimalloc
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     [return: NativeTypeName("size_t")]
     private static nuint mi_page_usable_block_size([NativeTypeName("const mi_page_t*")] mi_page_t* page) => mi_page_block_size(page) - MI_PADDING_SIZE;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool mi_page_is_huge([NativeTypeName("const mi_page_t*")] mi_page_t* page)
+    {
+        mi_assert_internal((MI_DEBUG > 1) && (page->is_huge == (_mi_page_segment(page)->page_kind == MI_PAGE_HUGE)));
+        return page->is_huge;
+    }
 
     // Thread free access
 
@@ -483,6 +500,10 @@ public static unsafe partial class Mimalloc
 #pragma warning disable CS0420
         mi_assert_internal((MI_DEBUG > 1) && (mi_page_thread_free_flag(page) != MI_DELAYED_FREEING));
         mi_atomic_store_release(ref page->xheap, (nuint)heap);
+        if (heap != null)
+        {
+            page->heap_tag = heap->tag;
+        }
 #pragma warning restore CS0420
     }
 
@@ -513,6 +534,18 @@ public static unsafe partial class Mimalloc
     {
         mi_assert_internal((MI_DEBUG > 1) && (page != null));
         return page->used == 0;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool mi_page_is_mostly_used([NativeTypeName("const mi_page_t*")] mi_page_t* page)
+    {
+        if (page == null)
+        {
+            return true;
+        }
+
+        nuint fraction = (nuint)(page->reserved / 8);
+        return (nuint)(page->reserved - page->used) <= fraction;
     }
 
     // are there any available blocks?
@@ -555,13 +588,65 @@ public static unsafe partial class Mimalloc
     private static bool mi_page_is_in_full([NativeTypeName("const mi_page_t*")] mi_page_t* page) => page->flags.x.in_full;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static void mi_page_set_in_full(mi_page_t* page, bool in_full) => page->flags.x.in_full = in_full;
+    private static void mi_page_set_in_full(mi_page_t* page, bool in_full)
+    {
+        if (page->flags.x.in_full != in_full)
+        {
+            mi_heap_t* heap = mi_page_heap(page);
+            mi_assert_internal((MI_DEBUG > 1) && (page->capacity == page->reserved));
+            nuint size = page->reserved * mi_page_block_size(page);
+
+            if (in_full)
+            {
+                heap->pages_full_size += size;
+            }
+            else
+            {
+                mi_assert_internal((MI_DEBUG > 1) && (size <= heap->pages_full_size));
+                heap->pages_full_size -= size;
+            }
+        }
+
+        page->flags.x.in_full = in_full;
+    }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static bool mi_page_has_aligned([NativeTypeName("const mi_page_t*")] mi_page_t* page) => page->flags.x.has_aligned;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void mi_page_set_has_aligned(mi_page_t* page, bool has_aligned) => page->flags.x.has_aligned = has_aligned;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool mi_block_ptr_is_guarded(mi_block_t* block, void* p)
+        => ((nuint)p - (nuint)block >= (nuint)SizeOf<mi_block_t>()) && (block->next == nuint.MaxValue);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool mi_block_is_guarded(mi_block_t* block) => block->next == nuint.MaxValue;
+
+    private static bool mi_heap_malloc_use_guarded(mi_heap_t* heap, nuint size)
+    {
+        nuint rate = heap->guarded_sample_rate;
+        if (rate == 0)
+        {
+            return false;
+        }
+
+        nuint count = heap->guarded_sample_count - 1;
+        if (count != 0)
+        {
+            heap->guarded_sample_count = count;
+            return false;
+        }
+
+        if ((size >= heap->guarded_size_min) && (size <= heap->guarded_size_max))
+        {
+            heap->guarded_sample_count = rate;
+            return true;
+        }
+
+        heap->guarded_sample_count = 1;
+        return false;
+    }
 
     /* -------------------------------------------------------------------
     Encoding/Decoding the free list next pointers
@@ -732,9 +817,9 @@ public static unsafe partial class Mimalloc
             // by Sebastiano Vigna, see: <http://xoshiro.di.unimi.it/splitmix64.c>
 
             x ^= x >> 30;
-            x *= unchecked((nuint)0xBF58476D1CE4E5B9);
+            x = unchecked(x * (nuint)0xBF58476D1CE4E5B9);
             x ^= x >> 27;
-            x *= unchecked((nuint)0x94D049BB133111EB);
+            x = unchecked(x * (nuint)0x94D049BB133111EB);
             x ^= x >> 31;
         }
         else
@@ -742,9 +827,9 @@ public static unsafe partial class Mimalloc
             // by Chris Wellons, see: <https://nullprogram.com/blog/2018/07/31/>
 
             x ^= x >> 16;
-            x *= 0x7FEB352D;
+            x = unchecked(x * 0x7FEB352D);
             x ^= x >> 15;
-            x *= 0x846CA68B;
+            x = unchecked(x * 0x846CA68B);
             x ^= x >> 16;
         }
 
@@ -787,6 +872,9 @@ public static unsafe partial class Mimalloc
         }
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool _mi_os_has_overcommit() => os_overcommit;
+
     // -------------------------------------------------------------------
     // Getting the thread id should be performant as it is called in the
     // fast path of `_mi_free` and we specialize for various platforms.
@@ -795,4 +883,7 @@ public static unsafe partial class Mimalloc
     // We use the .NET thread id rather than porting the native implementation
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static nuint _mi_thread_id() => (nuint)Environment.CurrentManagedThreadId;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static nuint _mi_current_thread_count() => mi_atomic_load_relaxed(ref thread_count);
 }

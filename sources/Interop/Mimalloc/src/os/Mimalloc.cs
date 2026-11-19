@@ -18,14 +18,18 @@ public static unsafe partial class Mimalloc
       large OS pages (if MIMALLOC_LARGE_OS_PAGES is true).
     ----------------------------------------------------------- */
 
-    private static partial bool _mi_os_decommit(void* addr, [NativeTypeName("size_t")] nuint size, [NativeTypeName("mi_stats_t*")] ref mi_stats_t tld_stats);
+    private static partial bool _mi_os_decommit(void* addr, [NativeTypeName("size_t")] nuint size, [NativeTypeName("mi_stats_t*")] ref mi_stats_internal_t tld_stats);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void* mi_align_up_ptr(void* p, [NativeTypeName("size_t")] nuint alignment) => (void*)_mi_align_up((nuint)p, alignment);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     [return: NativeTypeName("uintptr_t")]
-    private static nuint _mi_align_down([NativeTypeName("uintptr_t")] nuint sz, [NativeTypeName("size_t")] nuint alignment) => sz / alignment * alignment;
+    private static nuint _mi_align_down([NativeTypeName("uintptr_t")] nuint sz, [NativeTypeName("size_t")] nuint alignment)
+    {
+        nuint mask = alignment - 1;
+        return ((alignment & mask) == 0) ? (sz & ~mask) : (sz / alignment * alignment);
+    }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void* mi_align_down_ptr(void* p, [NativeTypeName("size_t")] nuint alignment) => (void*)_mi_align_down((nuint)p, alignment);
@@ -38,17 +42,15 @@ public static unsafe partial class Mimalloc
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static partial nuint _mi_os_large_page_size() => (large_os_page_size != 0) ? large_os_page_size : _mi_os_page_size();
 
-    private static bool use_large_os_page([NativeTypeName("size_t")] nuint size, [NativeTypeName("size_t")] nuint alignment)
+    private static bool _mi_os_has_virtual_reserve() => IsWindows || IsUnix;
+
+    private static bool mi_os_canuse_large_page([NativeTypeName("size_t")] nuint size, [NativeTypeName("size_t")] nuint alignment)
     {
-        // if we have access, check the size and alignment requirements
-
-        if ((large_os_page_size == 0) || !mi_option_is_enabled(mi_option_large_os_pages))
-        {
-            return false;
-        }
-
-        return ((size % large_os_page_size) == 0) && ((alignment % large_os_page_size) == 0);
+        return (large_os_page_size != 0) && ((size % large_os_page_size) == 0) && ((alignment % large_os_page_size) == 0);
     }
+
+    private static bool use_large_os_page(nuint size, nuint alignment)
+        => mi_option_is_enabled(mi_option_allow_large_os_pages) && mi_os_canuse_large_page(size, alignment);
 
     // round to a good OS allocation size (bounded by max 12.5% waste)
     private static partial nuint _mi_os_good_alloc_size(nuint size)
@@ -93,7 +95,10 @@ public static unsafe partial class Mimalloc
       Raw allocation on Windows (VirtualAlloc) and Unix's (mmap).
     ----------------------------------------------------------- */
 
-    private static bool mi_os_mem_free(void* addr, [NativeTypeName("size_t")] nuint size, bool was_committed, [NativeTypeName("mi_stats_t*")] ref mi_stats_t stats)
+    private static bool mi_os_mem_free(void* addr, [NativeTypeName("size_t")] nuint size, bool was_committed, [NativeTypeName("mi_stats_t*")] ref mi_stats_internal_t stats)
+        => mi_os_mem_free_ex(addr, size, was_committed ? size : 0, ref stats);
+
+    private static bool mi_os_mem_free_ex(void* addr, [NativeTypeName("size_t")] nuint size, [NativeTypeName("size_t")] nuint commit_size, [NativeTypeName("mi_stats_t*")] ref mi_stats_internal_t stats)
     {
         if ((addr == null) || (size == 0))
         {
@@ -104,28 +109,47 @@ public static unsafe partial class Mimalloc
         if (IsWindows)
         {
             err = VirtualFree(addr, 0, MEM_RELEASE) == 0;
+            uint errcode = err ? GetLastError() : ERROR_SUCCESS;
+
+            if (errcode == ERROR_INVALID_ADDRESS)
+            {
+                MEMORY_BASIC_INFORMATION info = default;
+                nuint queried = VirtualQuery(addr, &info, SizeOf<MEMORY_BASIC_INFORMATION>());
+
+                if (queried == 0)
+                {
+                    errcode = GetLastError();
+                }
+                else if (((nuint)info.AllocationBase < (nuint)addr) && (((nuint)addr - (nuint)info.AllocationBase) < size))
+                {
+                    err = VirtualFree(info.AllocationBase, 0, MEM_RELEASE) == 0;
+                    errcode = err ? GetLastError() : ERROR_SUCCESS;
+                }
+            }
+
+            if (errcode != ERROR_SUCCESS)
+            {
+                _mi_warning_message("unable to release OS memory: error code 0x{0:X}, addr: {1:X}, size: {2}\n", errcode, (nuint)addr, size);
+            }
         }
         else
         {
             err = munmap(addr, size) == -1;
+
+            if (err)
+            {
+                _mi_warning_message("unable to release OS memory: error code {0}, addr: {1:X}, size: {2}\n", errno, (nuint)addr, size);
+            }
         }
 
-        if (was_committed)
+        if (commit_size > 0)
         {
-            _mi_stat_decrease(ref stats.committed, size);
+            _mi_stat_decrease(ref stats.committed, commit_size);
         }
 
         _mi_stat_decrease(ref stats.reserved, size);
 
-        if (err)
-        {
-            _mi_warning_message("munmap failed: {0}, addr 0x{1,-8:X}, size {2}\n", errno, (nuint)addr, size);
-            return false;
-        }
-        else
-        {
-            return true;
-        }
+        return !err;
     }
 
     private static partial void* mi_os_get_aligned_hint([NativeTypeName("size_t")] nuint try_alignment, [NativeTypeName("size_t")] nuint size);
@@ -148,23 +172,14 @@ public static unsafe partial class Mimalloc
                     return p;
                 }
 
-                uint err = GetLastError();
-
-                // If linked with multiple instances, we may have tried to allocate at an already allocated area (#210)
-                if ((err != ERROR_INVALID_ADDRESS) && (err != ERROR_INVALID_PARAMETER))
-                {
-                    // Windows7 instability (#230)
-                    return null;
-                }
-
-                // fall through
+                _mi_warning_message("unable to allocate hinted aligned OS memory ({0} bytes, error code: 0x{1:X}, address: {2:X}, alignment: {3}, flags: 0x{4:X})\n", size, GetLastError(), (nuint)hint, try_alignment, flags);
             }
         }
 
         if (IsWindows10OrLater)
         {
             // on modern Windows try use VirtualAlloc2 for aligned allocation
-            if ((try_alignment > 0) && ((try_alignment % _mi_os_page_size()) == 0) && (VirtualAlloc2 != null))
+            if ((addr == null) && (try_alignment > 0) && ((try_alignment % _mi_os_page_size()) == 0) && (VirtualAlloc2 != null))
             {
                 MEM_ADDRESS_REQUIREMENTS reqs = default;
                 reqs.Alignment = try_alignment;
@@ -173,12 +188,54 @@ public static unsafe partial class Mimalloc
                 param.Anonymous1.Type = (ulong)MemExtendedParameterAddressRequirements;
                 param.Anonymous2.Pointer = &reqs;
 
-                return VirtualAlloc2(GetCurrentProcess(), addr, size, flags, PAGE_READWRITE, &param, 1);
+                void* p = VirtualAlloc2(GetCurrentProcess(), addr, size, flags, PAGE_READWRITE, &param, 1);
+                if (p != null)
+                {
+                    return p;
+                }
+
+                _mi_warning_message("unable to allocate aligned OS memory ({0} bytes, error code: 0x{1:X}, address: {2:X}, alignment: {3}, flags: 0x{4:X})\n", size, GetLastError(), (nuint)addr, try_alignment, flags);
             }
         }
 
         // last resort
         return VirtualAlloc(addr, size, flags, PAGE_READWRITE);
+    }
+
+    private static bool win_is_out_of_memory_error(uint error)
+        => (error == ERROR_COMMITMENT_MINIMUM) || (error == ERROR_COMMITMENT_LIMIT) || (error == ERROR_PAGEFILE_QUOTA) || (error == ERROR_NOT_ENOUGH_MEMORY);
+
+    private static void* mi_win_virtual_alloc_prim(void* addr, nuint size, nuint try_alignment, uint flags)
+    {
+        int maxRetryMsecs = mi_option_get_clamp(mi_option_retry_on_oom, 0, 2000);
+        if (maxRetryMsecs == 1)
+        {
+            maxRetryMsecs = 100;
+        }
+
+        for (int tries = 1; tries <= 10; tries++)
+        {
+            void* p = mi_win_virtual_allocx(addr, size, try_alignment, flags);
+            if (p != null)
+            {
+                return p;
+            }
+
+            uint error = GetLastError();
+            if ((maxRetryMsecs <= 0) || (try_alignment > (2 * MI_SEGMENT_ALIGN)) ||
+                ((flags & MEM_COMMIT) == 0) || ((flags & MEM_LARGE_PAGES) != 0) || !win_is_out_of_memory_error(error))
+            {
+                break;
+            }
+
+            _mi_warning_message("out-of-memory on OS allocation, try again... (attempt {0}, 0x{1:X} bytes, error code: 0x{2:X}, address: {3:X}, alignment: 0x{4:X}, flags: 0x{5:X})\n", tries, size, error, (nuint)addr, try_alignment, flags);
+
+            int sleepMsecs = Math.Min(tries * 40, maxRetryMsecs);
+            maxRetryMsecs -= sleepMsecs;
+            System.Threading.Thread.Sleep(sleepMsecs);
+        }
+
+        return null;
     }
 
     private static void* mi_win_virtual_alloc(void* addr, [NativeTypeName("size_t")] nuint size, [NativeTypeName("size_t")] nuint try_alignment, [NativeTypeName("DWORD")] uint flags, bool large_only, bool allow_large, [NativeTypeName("bool*")] out bool is_large)
@@ -205,7 +262,7 @@ public static unsafe partial class Mimalloc
                 // large OS pages must always reserve and commit.
                 is_large = true;
 
-                p = mi_win_virtual_allocx(addr, size, try_alignment, flags | MEM_LARGE_PAGES);
+                p = mi_win_virtual_alloc_prim(addr, size, try_alignment, flags | MEM_LARGE_PAGES);
 
                 if (large_only)
                 {
@@ -224,12 +281,12 @@ public static unsafe partial class Mimalloc
         if (p == null)
         {
             is_large = (flags & MEM_LARGE_PAGES) != 0;
-            p = mi_win_virtual_allocx(addr, size, try_alignment, flags);
+            p = mi_win_virtual_alloc_prim(addr, size, try_alignment, flags);
         }
 
         if (p == null)
         {
-            _mi_warning_message("unable to allocate OS memory ({0} bytes, error code: {1}, address: {2:X}, large only: {3}, allow large: {4})\n", size, GetLastError(), (nuint)addr, large_only, allow_large);
+            _mi_warning_message("unable to allocate OS memory ({0} bytes, error code: 0x{1:X}, address: {2:X}, alignment: {3}, flags: 0x{4:X}, large only: {5}, allow large: {6})\n", size, GetLastError(), (nuint)addr, try_alignment, flags, large_only, allow_large);
         }
 
         return p;
@@ -279,7 +336,11 @@ public static unsafe partial class Mimalloc
         void* p = null;
         is_large = false;
 
-        int flags = MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE;
+        int flags = MAP_PRIVATE | MAP_ANONYMOUS;
+        if (_mi_os_has_overcommit())
+        {
+            flags |= MAP_NORESERVE;
+        }
         int fd = -1;
 
         if (IsMacOS)
@@ -315,7 +376,7 @@ public static unsafe partial class Mimalloc
 
                 lflags |= MAP_HUGETLB;
 
-                if (((size % GiB) == 0) && mi_huge_pages_available)
+                if (((size % GiB) == 0) && (mi_huge_pages_available != 0))
                 {
                     lflags |= MAP_HUGE_1GB;
                 }
@@ -336,7 +397,7 @@ public static unsafe partial class Mimalloc
                     if ((p == null) && ((lflags & MAP_HUGE_1GB) != 0))
                     {
                         // don't try huge 1GiB pages again
-                        mi_huge_pages_available = false;
+                        mi_huge_pages_available = 0;
 
                         _mi_warning_message("unable to allocate huge (1GiB) page, trying large (2MiB) pages instead (error {0})\n", errno);
 
@@ -363,23 +424,16 @@ public static unsafe partial class Mimalloc
             is_large = false;
             p = mi_unix_mmapx(addr, size, try_alignment, protect_flags, flags, fd);
 
-            if (MADV_HUGEPAGE != 0)
+            if ((p != null) && (MADV_HUGEPAGE != 0) && allow_large && mi_option_is_enabled(mi_option_allow_thp) && mi_os_canuse_large_page(size, try_alignment))
             {
                 // Many Linux systems don't allow MAP_HUGETLB but they support instead
                 // transparent huge pages (THP). It is not required to call `madvise` with MADV_HUGE
                 // though since properly aligned allocations will already use large pages if available
-                // in that case -- in particular for our large regions (in `memory.c`).
+                // in that case -- in particular for large arena reservations.
                 // However, some systems only allow THP if called with explicit `madvise`, so
                 // when large OS pages are enabled for mimalloc, we call `madvice` anyways.
 
-                if (allow_large && use_large_os_page(size, try_alignment))
-                {
-                    if (posix_madvise(p, size, MADV_HUGEPAGE) == 0)
-                    {
-                        // possibly
-                        is_large = true;
-                    };
-                }
+                _ = posix_madvise(p, size, MADV_HUGEPAGE);
             }
         }
 
@@ -399,10 +453,15 @@ public static unsafe partial class Mimalloc
     {
 #pragma warning disable CS0420
         // On 64-bit systems, we can do efficient aligned allocation by using
-        // the 4TiB to 30TiB area to allocate them.
+        // the 2TiB to 6TiB area to allocate them.
 
         if (Environment.Is64BitProcess)
         {
+            if (os_virtual_address_bits < 46)
+            {
+                return null;
+            }
+
             // Return a 4MiB aligned address that is probably available
 
             if ((try_alignment == 0) || (try_alignment > MI_SEGMENT_SIZE))
@@ -415,29 +474,37 @@ public static unsafe partial class Mimalloc
                 return null;
             }
 
-            nuint hint = mi_atomic_add_acq_rel(ref aligned_base, size);
-
-            if ((hint == 0) || (hint > ((nuint)30 << 40)))
+            // In secure mode, large hints can expose known addresses across a significant part of the address space.
+            if ((MI_SECURE > 0) && (size > GiB))
             {
-                // try to wrap around after 30TiB (area after 32TiB is used for huge OS pages)
+                return null;
+            }
 
-                // start at 4TiB area
-                nuint init = (nuint)4 << 40;
+            nuint hint_size = size + MI_SEGMENT_SIZE;
+
+            nuint hint_base = (nuint)2 << 40;
+            nuint hint_area = (nuint)4 << 40;
+            nuint hint_max = (nuint)30 << 40;
+
+            nuint hint = mi_atomic_add_acq_rel(ref aligned_base, hint_size);
+
+            if ((hint == 0) || (hint > hint_max))
+            {
+                nuint init = hint_base;
 
                 if ((MI_SECURE > 0) || (MI_DEBUG == 0))
                 {
                     // security: randomize start of aligned allocations unless in debug mode
                     nuint r = _mi_heap_random_next(mi_get_default_heap());
 
-                    // (randomly 20 bits)*4MiB == 0 to 4TiB
-                    init += (MI_SEGMENT_SIZE * ((r >> 17) & 0xFFFFF));
+                    init += (MI_SEGMENT_SIZE * ((r >> 17) & 0xFFFFF)) % hint_area;
                 }
 
-                nuint expected = hint + size;
+                nuint expected = hint + hint_size;
                 _ = mi_atomic_cas_strong_acq_rel(ref aligned_base, ref expected, init);
 
-                // this may still give 0 or > 30TiB but that is ok, it is a hint after all
-                hint = mi_atomic_add_acq_rel(ref aligned_base, size);
+                // this may still give 0 or > hint_max but that is ok, it is a hint after all
+                hint = mi_atomic_add_acq_rel(ref aligned_base, hint_size);
             }
 
             if ((hint % try_alignment) != 0)
@@ -454,7 +521,7 @@ public static unsafe partial class Mimalloc
 
     // Primitive allocation from the OS.
     // Note: the `try_alignment` is just a hint and the returned pointer is not guaranteed to be aligned.
-    private static void* mi_os_mem_alloc([NativeTypeName("size_t")] nuint size, [NativeTypeName("size_t")] nuint try_alignment, bool commit, bool allow_large, [NativeTypeName("bool*")] out bool is_large, [NativeTypeName("mi_stats_t*")] ref mi_stats_t stats)
+    private static void* mi_os_mem_alloc([NativeTypeName("size_t")] nuint size, [NativeTypeName("size_t")] nuint try_alignment, bool commit, bool allow_large, [NativeTypeName("bool*")] out bool is_large, [NativeTypeName("mi_stats_t*")] ref mi_stats_internal_t stats)
     {
         mi_assert_internal((MI_DEBUG > 1) && size > 0 && (size % _mi_os_page_size()) == 0);
 
@@ -467,6 +534,20 @@ public static unsafe partial class Mimalloc
         if (!commit)
         {
             allow_large = false;
+        }
+
+        if (try_alignment == 0)
+        {
+            try_alignment = 1;
+        }
+
+        nuint largePageSize = large_os_page_size;
+        if ((largePageSize > 0) &&
+            (size >= ((nuint)8 * largePageSize)) &&
+            _mi_is_power_of_two(try_alignment) &&
+            (try_alignment < largePageSize))
+        {
+            try_alignment = largePageSize;
         }
 
         void* p;
@@ -503,8 +584,10 @@ public static unsafe partial class Mimalloc
 
     // Primitive aligned allocation from the OS.
     // This function guarantees the allocated memory is aligned.
-    private static void* mi_os_mem_alloc_aligned([NativeTypeName("size_t")] nuint size, [NativeTypeName("size_t")] nuint alignment, bool commit, bool allow_large, [NativeTypeName("bool*")] out bool is_large, [NativeTypeName("mi_stats_t*")] ref mi_stats_t stats)
+    private static void* mi_os_mem_alloc_aligned([NativeTypeName("size_t")] nuint size, [NativeTypeName("size_t")] nuint alignment, bool commit, bool allow_large, [NativeTypeName("bool*")] out bool is_large, out void* allocationBase, out nuint allocationSize, [NativeTypeName("mi_stats_t*")] ref mi_stats_internal_t stats)
     {
+        allocationBase = null;
+        allocationSize = 0;
         mi_assert_internal((MI_DEBUG > 1) && (alignment >= _mi_os_page_size()) && ((alignment & (alignment - 1)) == 0));
         mi_assert_internal((MI_DEBUG > 1) && (size > 0) && ((size % _mi_os_page_size()) == 0));
 
@@ -529,10 +612,15 @@ public static unsafe partial class Mimalloc
             return null;
         }
 
-        // if not aligned, free it, overallocate, and unmap around it
-        if ((nuint)p % alignment != 0)
+        if ((nuint)p % alignment == 0)
+        {
+            allocationBase = p;
+            allocationSize = size;
+        }
+        else
         {
             _ = mi_os_mem_free(p, size, commit, ref stats);
+            _mi_warning_message("unable to allocate aligned OS memory directly, fall back to over-allocation ({0} bytes, address: {1:X}, commit: {2}, is_large: {3})\n", size, (nuint)p, commit, is_large);
 
             if (size >= (SIZE_MAX - alignment))
             {
@@ -544,63 +632,27 @@ public static unsafe partial class Mimalloc
 
             if (IsWindows)
             {
-                // over-allocate and than re-allocate exactly at an aligned address in there.
-                // this may fail due to threads allocating at the same time so we
-                // retry this at most 3 times before giving up.
-                // (we can not decommit around the overallocation on Windows, because we can only
-                //  free the original pointer, not one pointing inside the area)
-
-                uint flags = MEM_RESERVE;
-
-                if (commit)
+                p = mi_os_mem_alloc(over_size, 1, false, false, out is_large, ref stats);
+                if (p == null)
                 {
-                    flags |= MEM_COMMIT;
+                    return null;
                 }
 
-                for (int tries = 0; tries < 3; tries++)
+                allocationBase = p;
+                allocationSize = over_size;
+                p = mi_align_up_ptr(p, alignment);
+                if (commit && !_mi_os_commit(p, size, out _, ref stats))
                 {
-                    // over-allocate to determine a virtual memory range
-                    p = mi_os_mem_alloc(over_size, alignment, commit, false, out is_large, ref stats);
-
-                    if (p == null)
-                    {
-                        // error
-                        return null;
-                    }
-
-                    if (((nuint)p % alignment) == 0)
-                    {
-                        // if p happens to be aligned, just decommit the left-over area
-                        _ = _mi_os_decommit((byte*)p + size, over_size - size, ref stats);
-                        break;
-                    }
-                    else
-                    {
-                        // otherwise free and allocate at an aligned address in there
-                        _ = mi_os_mem_free(p, over_size, commit, ref stats);
-
-                        void* aligned_p = mi_align_up_ptr(p, alignment);
-                        p = mi_win_virtual_alloc(aligned_p, size, alignment, flags, false, allow_large, out is_large);
-
-                        if (p == aligned_p)
-                        {
-                            // success!
-                            break;
-                        }
-
-                        if (p != null)
-                        {
-                            // should not happen?
-                            _ = mi_os_mem_free(p, size, commit, ref stats);
-                            p = null;
-                        }
-                    }
+                    _ = mi_os_mem_free(allocationBase, over_size, false, ref stats);
+                    allocationBase = null;
+                    allocationSize = 0;
+                    return null;
                 }
             }
             else
             {
                 // overallocate...
-                p = mi_os_mem_alloc(over_size, alignment, commit, false, out is_large, ref stats);
+                p = mi_os_mem_alloc(over_size, 1, commit, false, out is_large, ref stats);
 
                 if (p == null)
                 {
@@ -628,10 +680,13 @@ public static unsafe partial class Mimalloc
 
                 // we can return the aligned pointer on `mmap` systems
                 p = aligned_p;
+                allocationBase = aligned_p;
+                allocationSize = mid_size;
             }
         }
 
-        mi_assert_internal((MI_DEBUG > 1) && ((p == null) || ((p != null) && (((nuint)p % alignment) == 0))));
+        mi_assert_internal((MI_DEBUG > 1) && ((p == null) || ((p != null) && (allocationBase != null) && (((nuint)p % alignment) == 0))));
+        mi_assert_internal((MI_DEBUG > 1) && ((p == null) || (allocationSize >= size)));
         return p;
     }
 
@@ -639,9 +694,10 @@ public static unsafe partial class Mimalloc
       OS API: alloc, free, alloc_aligned
     ----------------------------------------------------------- */
 
-    private static partial void* _mi_os_alloc(nuint size, ref mi_stats_t tld_stats)
+    private static partial void* _mi_os_alloc(nuint size, out mi_memid_t memid, ref mi_stats_internal_t tld_stats)
     {
-        ref mi_stats_t stats = ref _mi_stats_main;
+        ref mi_stats_internal_t stats = ref _mi_stats_main;
+        memid = mi_memid_none();
 
         if (size == 0)
         {
@@ -649,27 +705,91 @@ public static unsafe partial class Mimalloc
         }
 
         size = _mi_os_good_alloc_size(size);
-        return mi_os_mem_alloc(size, 0, true, false, out _, ref stats);
+        void* p = mi_os_mem_alloc(size, 0, true, false, out bool is_large, ref stats);
+
+        if (p != null)
+        {
+            memid = mi_memid_create_os(p, size, true, true, is_large);
+        }
+
+        return p;
     }
 
-    private static partial void _mi_os_free_ex(void* p, nuint size, bool was_committed, ref mi_stats_t tld_stats)
+    private static partial void _mi_os_free_ex(void* p, nuint size, bool still_committed, mi_memid_t memid, ref mi_stats_internal_t tld_stats)
     {
-        ref mi_stats_t stats = ref _mi_stats_main;
+        ref mi_stats_internal_t stats = ref _mi_stats_main;
 
         if ((size == 0) || (p == null))
         {
             return;
         }
 
-        size = _mi_os_good_alloc_size(size);
-        _ = mi_os_mem_free(p, size, was_committed, ref stats);
+        if (mi_memkind_is_os(memid.memkind))
+        {
+            size = _mi_os_good_alloc_size(size);
+            nuint allocation_size = memid.mem.os.size;
+            if (allocation_size == 0)
+            {
+                allocation_size = _mi_os_good_alloc_size(size);
+            }
+
+            mi_assert_internal((MI_DEBUG > 1) && (allocation_size >= size));
+
+            nuint commit_size = still_committed ? size : 0;
+            void* allocationBase = p;
+
+            if (memid.mem.os.@base != p)
+            {
+                if ((memid.mem.os.@base == null) || ((nuint)memid.mem.os.@base > (nuint)p))
+                {
+                    _mi_error_message(EINVAL, "aligned OS free base is inconsistent with the allocation address ({0:X}, base {1:X})\n", (nuint)p, (nuint)memid.mem.os.@base);
+                    return;
+                }
+
+                nuint offset = (nuint)p - (nuint)memid.mem.os.@base;
+                if ((memid.mem.os.size != 0) && (offset > allocation_size))
+                {
+                    _mi_error_message(EINVAL, "aligned OS free base is inconsistent with the allocation address ({0:X}, base {1:X}, size {2})\n", (nuint)p, (nuint)memid.mem.os.@base, allocation_size);
+                    return;
+                }
+
+                allocationBase = memid.mem.os.@base;
+
+                if (memid.mem.os.size == 0)
+                {
+                    if (allocation_size > (SIZE_MAX - offset))
+                    {
+                        _mi_error_message(EOVERFLOW, "aligned OS free size overflow ({0} bytes, base offset {1})\n", allocation_size, offset);
+                        return;
+                    }
+
+                    allocation_size += offset;
+                }
+            }
+
+            if (memid.memkind == mi_memkind_t.MI_MEM_OS_HUGE)
+            {
+                mi_assert_internal((MI_DEBUG > 1) && memid.is_pinned);
+                mi_os_free_huge_os_pages(allocationBase, allocation_size, ref stats);
+            }
+            else
+            {
+                _ = mi_os_mem_free_ex(allocationBase, allocation_size, commit_size, ref stats);
+            }
+        }
+        else
+        {
+            mi_assert_internal((MI_DEBUG > 1) && ((int)memid.memkind < (int)mi_memkind_t.MI_MEM_OS));
+        }
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static partial void _mi_os_free(void* p, nuint size, ref mi_stats_t stats) => _mi_os_free_ex(p, size, true, ref stats);
+    private static partial void _mi_os_free(void* p, nuint size, mi_memid_t memid, ref mi_stats_internal_t stats) => _mi_os_free_ex(p, size, true, memid, ref stats);
 
-    private static partial void* _mi_os_alloc_aligned(nuint size, nuint alignment, bool commit, ref bool large, mi_os_tld_t* tld)
+    private static partial void* _mi_os_alloc_aligned(nuint size, nuint alignment, bool commit, bool allow_large, out mi_memid_t memid, ref mi_stats_internal_t stats)
     {
+        memid = mi_memid_none();
+
         if (size == 0)
         {
             return null;
@@ -678,8 +798,59 @@ public static unsafe partial class Mimalloc
         size = _mi_os_good_alloc_size(size);
         alignment = _mi_align_up(alignment, _mi_os_page_size());
 
-        var allow_large = large;
-        return mi_os_mem_alloc_aligned(size, alignment, commit, allow_large, out large, ref _mi_stats_main);
+        void* p = mi_os_mem_alloc_aligned(size, alignment, commit, allow_large, out bool is_large, out void* allocationBase, out nuint allocationSize, ref _mi_stats_main);
+
+        if (p != null)
+        {
+            memid = mi_memid_create_os(allocationBase, allocationSize, commit, true, is_large);
+        }
+
+        return p;
+    }
+
+    private static partial void* _mi_os_alloc_aligned_at_offset(nuint size, nuint alignment, nuint align_offset, bool commit, bool allow_large, out mi_memid_t memid, ref mi_stats_internal_t stats)
+    {
+        memid = mi_memid_none();
+
+        mi_assert_internal((MI_DEBUG > 1) && (align_offset <= MI_SEGMENT_SIZE));
+        mi_assert_internal((MI_DEBUG > 1) && (align_offset <= size));
+        mi_assert_internal((MI_DEBUG > 1) && ((alignment % _mi_os_page_size()) == 0));
+
+        if ((align_offset > MI_SEGMENT_SIZE) || (align_offset > size))
+        {
+            return null;
+        }
+
+        if (align_offset == 0)
+        {
+            return _mi_os_alloc_aligned(size, alignment, commit, allow_large, out memid, ref stats);
+        }
+
+        size = _mi_os_good_alloc_size(size);
+        alignment = _mi_align_up(alignment, _mi_os_page_size());
+
+        nuint extra = _mi_align_up(align_offset, alignment) - align_offset;
+        if (size >= (SIZE_MAX - extra))
+        {
+            return null;
+        }
+
+        nuint oversize = size + extra;
+        void* start = _mi_os_alloc_aligned(oversize, alignment, commit, allow_large, out memid, ref stats);
+        if (start == null)
+        {
+            return null;
+        }
+
+        void* p = (byte*)start + extra;
+        mi_assert_internal((MI_DEBUG > 1) && (((nuint)p + align_offset) % alignment == 0));
+
+        if (commit && (extra >= _mi_os_page_size()))
+        {
+            _ = _mi_os_decommit(start, extra, ref stats);
+        }
+
+        return p;
     }
 
     /* -----------------------------------------------------------
@@ -728,13 +899,21 @@ public static unsafe partial class Mimalloc
         }
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static int mi_os_madvise(void* addr, nuint size, int advice)
+    {
+        int result = madvise(addr, size, advice);
+        return (result == 0) ? 0 : errno;
+    }
+
     // Commit/Decommit memory.
     // Usually commit is aligned liberal, while decommit is aligned conservative.
     // (but not for the reset version where we want commit to be conservative as well)
-    private static bool mi_os_commitx(void* addr, [NativeTypeName("size_t")] nuint size, bool commit, bool conservative, [NativeTypeName("bool*")] out bool is_zero, [NativeTypeName("mi_stats_t*")] ref mi_stats_t stats)
+    private static bool mi_os_commitx(void* addr, [NativeTypeName("size_t")] nuint size, bool commit, bool conservative, [NativeTypeName("bool*")] out bool is_zero, out bool needs_recommit, [NativeTypeName("mi_stats_t*")] ref mi_stats_internal_t stats)
     {
         // page align in the range, commit liberally, decommit conservative
         is_zero = false;
+        needs_recommit = !commit;
 
         void* start = mi_os_page_align_areax(conservative, addr, size, out nuint csize);
 
@@ -762,10 +941,11 @@ public static unsafe partial class Mimalloc
             {
                 // if the memory was already committed, the call succeeds but it is not zero'd
                 void* p = VirtualAlloc(start, csize, MEM_COMMIT, PAGE_READWRITE);
-                err = (p == start) ? 0 : (int)GetLastError();
+                err = (p != null) ? 0 : (int)GetLastError();
             }
             else
             {
+                needs_recommit = true;
                 bool ok = VirtualFree(start, csize, MEM_DECOMMIT) != 0;
                 err = ok ? 0 : (int)GetLastError();
             }
@@ -774,12 +954,11 @@ public static unsafe partial class Mimalloc
         {
             if (!commit)
             {
-                // use mmap with MAP_FIXED to discard the existing memory (and reduce commit charge)
-                void* p = mmap(start, csize, PROT_NONE, MAP_FIXED | MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, -1, 0);
-
-                if (p != start)
+                needs_recommit = (MI_DEBUG != 0) || (MI_SECURE > 2);
+                err = mi_os_madvise(start, csize, MADV_DONTNEED);
+                if (needs_recommit)
                 {
-                    err = errno;
+                    _ = mprotect(start, csize, PROT_NONE);
                 }
             }
             else
@@ -790,6 +969,15 @@ public static unsafe partial class Mimalloc
                 if (err != 0)
                 {
                     err = errno;
+                }
+
+                if ((err == 0) && IsMacOS && (MADV_FREE_REUSE != 0))
+                {
+                    do
+                    {
+                        err = mi_os_madvise(start, csize, MADV_FREE_REUSE);
+                    }
+                    while (err == EAGAIN);
                 }
             }
         }
@@ -805,27 +993,27 @@ public static unsafe partial class Mimalloc
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static partial bool _mi_os_commit(void* addr, nuint size, out bool is_zero, ref mi_stats_t tld_stats)
+    private static partial bool _mi_os_commit(void* addr, nuint size, out bool is_zero, ref mi_stats_internal_t tld_stats)
     {
-        ref mi_stats_t stats = ref _mi_stats_main;
-        return mi_os_commitx(addr, size, true, conservative: false, out is_zero, ref stats);
+        ref mi_stats_internal_t stats = ref _mi_stats_main;
+        return mi_os_commitx(addr, size, true, conservative: false, out is_zero, out _, ref stats);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static partial bool _mi_os_decommit(void* addr, nuint size, ref mi_stats_t tld_stats)
+    private static partial bool _mi_os_decommit(void* addr, nuint size, ref mi_stats_internal_t tld_stats)
     {
-        ref mi_stats_t stats = ref _mi_stats_main;
-        return mi_os_commitx(addr, size, false, conservative: true, out bool _, ref stats);
+        ref mi_stats_internal_t stats = ref _mi_stats_main;
+        return mi_os_commitx(addr, size, false, conservative: true, out _, out _, ref stats);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static bool mi_os_commit_unreset(void* addr, [NativeTypeName("size_t")] nuint size, [NativeTypeName("bool*")] out bool is_zero, [NativeTypeName("mi_stats_t*")] ref mi_stats_t stats) => mi_os_commitx(addr, size, true, conservative: true, out is_zero, ref stats);
+    private static bool mi_os_commit_unreset(void* addr, [NativeTypeName("size_t")] nuint size, [NativeTypeName("bool*")] out bool is_zero, [NativeTypeName("mi_stats_t*")] ref mi_stats_internal_t stats) => mi_os_commitx(addr, size, true, conservative: true, out is_zero, out _, ref stats);
 
     // Signal to the OS that the address range is no longer in use
     // but may be used later again. This will release physical memory
     // pages and reduce swapping while keeping the memory committed.
     // We page align to a conservative area inside the range to reset.
-    private static bool mi_os_resetx(void* addr, [NativeTypeName("size_t")] nuint size, bool reset, [NativeTypeName("mi_stats_t*")] ref mi_stats_t stats)
+    private static bool mi_os_resetx(void* addr, [NativeTypeName("size_t")] nuint size, bool reset, [NativeTypeName("mi_stats_t*")] ref mi_stats_internal_t stats)
     {
 #pragma warning disable CS0420
         // page align conservatively within the range
@@ -839,6 +1027,7 @@ public static unsafe partial class Mimalloc
         if (reset)
         {
             _mi_stat_increase(ref stats.reset, csize);
+            _mi_stat_counter_increase(ref stats.reset_calls, 1);
         }
         else
         {
@@ -864,13 +1053,7 @@ public static unsafe partial class Mimalloc
 
             mi_assert_internal((MI_DEBUG > 1) && (p == start));
 
-            if ((p == start) && (start != null))
-            {
-                // VirtualUnlock after MEM_RESET removes the memory from the working set
-                _ = VirtualUnlock(start, csize);
-            }
-
-            if (p != start)
+            if (p == null)
             {
                 return false;
             }
@@ -881,18 +1064,25 @@ public static unsafe partial class Mimalloc
 
             if (MADV_FREE != 0)
             {
-                err = posix_madvise(start, csize, (int)mi_atomic_load_relaxed(ref advice));
+                nuint current_advice = mi_atomic_load_relaxed(ref advice);
+                int advice_value = (int)current_advice;
 
-                if ((err != 0) && (errno == EINVAL) && (advice == (nuint)MADV_FREE))
+                do
+                {
+                    err = mi_os_madvise(start, csize, advice_value);
+                }
+                while (err == EAGAIN);
+
+                if ((err == EINVAL) && ((current_advice == (nuint)MADV_FREE_REUSABLE) || (current_advice == (nuint)MADV_FREE)))
                 {
                     // if MADV_FREE is not supported, fall back to MADV_DONTNEED from now on
                     mi_atomic_store_release(ref advice, (nuint)MADV_DONTNEED);
-                    err = posix_madvise(start, csize, MADV_DONTNEED);
+                    err = mi_os_madvise(start, csize, MADV_DONTNEED);
                 }
             }
             else
             {
-                err = posix_madvise(start, csize, MADV_DONTNEED);
+                err = mi_os_madvise(start, csize, MADV_DONTNEED);
             }
 
             if (err != 0)
@@ -914,34 +1104,44 @@ public static unsafe partial class Mimalloc
     // but may be used later again. This will release physical memory
     // pages and reduce swapping while keeping the memory committed.
     // We page align to a conservative area inside the range to reset.
-    private static partial bool _mi_os_reset(void* addr, nuint size, ref mi_stats_t tld_stats)
+    private static partial bool _mi_os_reset(void* addr, nuint size, ref mi_stats_internal_t tld_stats)
     {
-        ref mi_stats_t stats = ref _mi_stats_main;
-
-        if (mi_option_is_enabled(mi_option_reset_decommits))
-        {
-            return _mi_os_decommit(addr, size, ref stats);
-        }
-        else
-        {
-            return mi_os_resetx(addr, size, true, ref stats);
-        }
+        ref mi_stats_internal_t stats = ref _mi_stats_main;
+        return mi_os_resetx(addr, size, true, ref stats);
     }
 
-    private static partial bool _mi_os_unreset(void* addr, nuint size, out bool is_zero, ref mi_stats_t tld_stats)
+    private static bool _mi_os_purge_ex(void* addr, nuint size, bool allow_reset, ref mi_stats_internal_t stats)
     {
-        ref mi_stats_t stats = ref _mi_stats_main;
+        if (mi_option_get(mi_option_purge_delay) < 0)
+        {
+            return false;
+        }
 
-        if (mi_option_is_enabled(mi_option_reset_decommits))
+        _mi_stat_counter_increase(ref stats.purge_calls, 1);
+        _mi_stat_increase(ref stats.purged, size);
+
+        if (mi_option_is_enabled(mi_option_purge_decommits))
         {
-            // re-commit it (conservatively!)
-            return mi_os_commit_unreset(addr, size, out is_zero, ref stats);
+            _ = mi_os_commitx(addr, size, false, conservative: true, out _, out bool needs_recommit, ref stats);
+            return needs_recommit;
         }
-        else
+
+        if (allow_reset)
         {
-            is_zero = false;
-            return mi_os_resetx(addr, size, false, ref stats);
+            _ = _mi_os_reset(addr, size, ref stats);
         }
+
+        return false;
+    }
+
+    private static bool _mi_os_purge(void* addr, nuint size, ref mi_stats_internal_t stats)
+        => _mi_os_purge_ex(addr, size, true, ref stats);
+
+    private static partial bool _mi_os_unreset(void* addr, nuint size, out bool is_zero, ref mi_stats_internal_t tld_stats)
+    {
+        ref mi_stats_internal_t stats = ref _mi_stats_main;
+        is_zero = false;
+        return mi_os_resetx(addr, size, false, ref stats);
     }
 
 
@@ -987,7 +1187,7 @@ public static unsafe partial class Mimalloc
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static partial bool _mi_os_unprotect(void* addr, nuint size) => mi_os_protectx(addr, size, false);
 
-    private static bool _mi_os_shrink(void* p, [NativeTypeName("size_t")] nuint oldsize, [NativeTypeName("size_t")] nuint newsize, [NativeTypeName("mi_stats_t*")] ref mi_stats_t stats)
+    private static bool _mi_os_shrink(void* p, [NativeTypeName("size_t")] nuint oldsize, [NativeTypeName("size_t")] nuint newsize, [NativeTypeName("mi_stats_t*")] ref mi_stats_internal_t stats)
     {
         // page align conservatively within the range
         mi_assert_internal((MI_DEBUG > 1) && (oldsize > newsize) && (p != null));
@@ -1035,7 +1235,20 @@ public static unsafe partial class Mimalloc
     private static nint mi_os_mbind(void* start, [NativeTypeName("unsigned long")] nuint len, [NativeTypeName("unsigned long")] nuint mode, [NativeTypeName("const unsigned long*")] nuint* nmask, [NativeTypeName("unsigned long")] nuint maxnode, [NativeTypeName("unsigned")] uint flags)
     {
         mi_assert_internal((MI_DEBUG > 1) && IsUnix);
-        return 0;
+
+        if (!IsLinux || !Environment.Is64BitProcess)
+        {
+            return 0;
+        }
+
+        nint number = get_sys_mbind_number();
+        if (number == 0)
+        {
+            System.Runtime.InteropServices.Marshal.SetLastPInvokeError(ERRNO_ENOSYS);
+            return -1;
+        }
+
+        return syscall(number, start, len, mode, nmask, maxnode, flags);
     }
 
     private static void* mi_os_alloc_huge_os_pagesx(void* addr, [NativeTypeName("size_t")] nuint size, int numa_node)
@@ -1061,7 +1274,7 @@ public static unsafe partial class Mimalloc
                 };
 
                 // on modern Windows try use NtAllocateVirtualMemoryEx for 1GiB huge pages
-                if ((NtAllocateVirtualMemoryEx != null) && mi_huge_pages_available)
+                if ((NtAllocateVirtualMemoryEx != null) && (mi_huge_pages_available != 0))
                 {
                     @params[0].Anonymous1.Type = (ulong)MemExtendedParameterAttributeFlags;
                     @params[0].Anonymous2.ULong64 = MEM_EXTENDED_PARAMETER_NONPAGED_HUGE;
@@ -1090,7 +1303,7 @@ public static unsafe partial class Mimalloc
                         // fall back to regular large pages
 
                         // don't try further huge pages
-                        mi_huge_pages_available = false;
+                        mi_huge_pages_available = 0;
 
                         _mi_warning_message("unable to allocate using huge (1gb) pages, trying large (2mb) pages instead (status 0x{0:X})\n", err);
                     }
@@ -1118,10 +1331,10 @@ public static unsafe partial class Mimalloc
                 return null;
             }
 
-            if ((numa_node >= 0) && ((uint)numa_node < (8 * MI_INTPTR_SIZE)))
+            if ((numa_node >= 0) && ((uint)numa_node < ((8 * MI_INTPTR_SIZE) - 1)))
             {
                 // at most 64 nodes
-                nuint numa_mask = 1u << numa_node;
+                nuint numa_mask = (nuint)1 << numa_node;
 
                 // TODO: does `mbind` work correctly for huge OS pages? should we
                 // use `set_mempolicy` before calling mmap instead?
@@ -1147,6 +1360,12 @@ public static unsafe partial class Mimalloc
 
         if (Environment.Is64BitProcess)
         {
+            if (pages > (SIZE_MAX / MI_HUGE_OS_PAGE_SIZE))
+            {
+                _mi_warning_message("too many huge pages requested: {0}\n", pages);
+                return null;
+            }
+
             nuint size = pages * MI_HUGE_OS_PAGE_SIZE;
             nuint huge_start = mi_atomic_load_relaxed(ref mi_huge_start);
 
@@ -1173,6 +1392,12 @@ public static unsafe partial class Mimalloc
                     }
                 }
 
+                if (size > (SIZE_MAX - start))
+                {
+                    _mi_warning_message("too many huge pages requested: {0}\n", pages);
+                    return null;
+                }
+
                 end = start + size;
                 mi_assert_internal((MI_DEBUG > 1) && (end % MI_SEGMENT_SIZE == 0));
             }
@@ -1189,10 +1414,11 @@ public static unsafe partial class Mimalloc
     }
 
     // Allocate MI_SEGMENT_SIZE aligned huge pages
-    private static partial void* _mi_os_alloc_huge_os_pages(nuint pages, int numa_node, long max_msecs, out nuint pages_reserved, out nuint psize)
+    private static partial void* _mi_os_alloc_huge_os_pages(nuint pages, int numa_node, long max_msecs, out nuint pages_reserved, out nuint psize, out mi_memid_t memid)
     {
         psize = 0;
         pages_reserved = 0;
+        memid = mi_memid_none();
 
         byte* start = mi_os_claim_huge_pages(pages, out nuint size);
 
@@ -1207,9 +1433,9 @@ public static unsafe partial class Mimalloc
         // or to at least allocate as many as available on the system.
 
         long start_t = _mi_clock_start();
-        nuint page;
+        nuint page = 0;
 
-        for (page = 0; page < pages; page++)
+        while (page < pages)
         {
             // allocate a page
             void* addr = start + (page * MI_HUGE_OS_PAGE_SIZE);
@@ -1222,12 +1448,13 @@ public static unsafe partial class Mimalloc
                 if (p != null)
                 {
                     _mi_warning_message("could not allocate contiguous huge page {0} at {1:X}\n", page, (nuint)addr);
-                    _mi_os_free(p, MI_HUGE_OS_PAGE_SIZE, ref _mi_stats_main);
+                    _ = mi_os_mem_free(p, MI_HUGE_OS_PAGE_SIZE, true, ref _mi_stats_main);
                 }
                 break;
             }
 
             // success, record it
+            page++;
             _mi_stat_increase(ref _mi_stats_main.committed, MI_HUGE_OS_PAGE_SIZE);
             _mi_stat_increase(ref _mi_stats_main.reserved, MI_HUGE_OS_PAGE_SIZE);
 
@@ -1238,7 +1465,7 @@ public static unsafe partial class Mimalloc
 
                 if (page >= 1)
                 {
-                    long estimate = elapsed / (long)(page + 1) * (long)pages;
+                    long estimate = elapsed / (long)((page == 0) ? 1 : page) * (long)pages;
 
                     if (estimate > (2 * max_msecs))
                     {
@@ -1249,7 +1476,7 @@ public static unsafe partial class Mimalloc
 
                 if (elapsed > max_msecs)
                 {
-                    _mi_warning_message("huge page allocation timed out\n");
+                    _mi_warning_message("huge OS page allocation timed out (after allocating {0} page(s))\n", page);
                     break;
                 }
             }
@@ -1258,14 +1485,21 @@ public static unsafe partial class Mimalloc
         mi_assert_internal((MI_DEBUG > 1) && ((page * MI_HUGE_OS_PAGE_SIZE) <= size));
 
         pages_reserved = page;
-        psize = page * MI_HUGE_OS_PAGE_SIZE;
+        nuint allocated = page * MI_HUGE_OS_PAGE_SIZE;
+        psize = allocated;
+
+        if (page != 0)
+        {
+            memid = mi_memid_create_os(start, allocated, true, true, true);
+            memid.memkind = mi_memkind_t.MI_MEM_OS_HUGE;
+        }
 
         return (page == 0) ? null : start;
     }
 
     // free every huge page in a range individually (as we allocated per page)
     // note: needed with VirtualAlloc but could potentially be done in one go on mmap'd systems.
-    private static partial void _mi_os_free_huge_pages(void* p, nuint size, ref mi_stats_t stats)
+    private static void mi_os_free_huge_os_pages(void* p, nuint size, ref mi_stats_internal_t stats)
     {
         if ((p == null) || (size == 0))
         {
@@ -1276,8 +1510,9 @@ public static unsafe partial class Mimalloc
 
         while (size >= MI_HUGE_OS_PAGE_SIZE)
         {
-            _mi_os_free(@base, MI_HUGE_OS_PAGE_SIZE, ref stats);
+            _ = mi_os_mem_free(@base, MI_HUGE_OS_PAGE_SIZE, true, ref stats);
             size -= MI_HUGE_OS_PAGE_SIZE;
+            @base += MI_HUGE_OS_PAGE_SIZE;
         }
     }
 
@@ -1321,6 +1556,21 @@ public static unsafe partial class Mimalloc
             }
 
             return numa_node;
+        }
+        else if (IsLinux)
+        {
+            nint number = get_sys_getcpu_number();
+            if (number != 0)
+            {
+                uint cpu = 0;
+                uint node = 0;
+                if (syscall(number, &cpu, (nuint)(&node), 0, null, 0, 0) == 0)
+                {
+                    return node;
+                }
+            }
+
+            return 0;
         }
         else
         {
@@ -1373,6 +1623,50 @@ public static unsafe partial class Mimalloc
             }
 
             return (nuint)numa_max + 1;
+        }
+        else if (IsLinux)
+        {
+            const string path_prefix = "/sys/devices/system/node/node";
+            sbyte* path = stackalloc sbyte[33];
+            sbyte* digits = stackalloc sbyte[3];
+            for (int i = 0; i < path_prefix.Length; i++)
+            {
+                path[i] = (sbyte)path_prefix[i];
+            }
+
+            nuint last_found = 0;
+            for (nuint node = 1; node < 256; node++)
+            {
+                nuint value = node;
+                int digit_count = 0;
+
+                do
+                {
+                    digits[digit_count++] = (sbyte)('0' + (value % 10));
+                    value /= 10;
+                }
+                while (value != 0);
+
+                for (int i = 0; i < digit_count; i++)
+                {
+                    path[path_prefix.Length + i] = digits[digit_count - i - 1];
+                }
+                path[path_prefix.Length + digit_count] = 0;
+
+                if (access(path, R_OK) != 0)
+                {
+                    if ((node - last_found) > 4)
+                    {
+                        break;
+                    }
+                }
+                else
+                {
+                    last_found = node;
+                }
+            }
+
+            return last_found + 1;
         }
         else
         {

@@ -26,4 +26,7 @@ public unsafe struct mi_heap_area_t
     // size in bytes of each block
     [NativeTypeName("size_t")]
     public nuint block_size;
+
+    // heap tag associated with this area
+    public int heap_tag;
 }

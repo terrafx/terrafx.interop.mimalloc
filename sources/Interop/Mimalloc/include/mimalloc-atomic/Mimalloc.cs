@@ -283,6 +283,20 @@ public static unsafe partial class Mimalloc
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void mi_atomic_storei64_relaxed(ref long p, long x) => mi_atomic_storei64_explicit(ref p, x, mi_memory_order_relaxed);
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool mi_atomic_casi64_strong_acq_rel(ref long p, ref long expected, long desired)
+    {
+        long current = Interlocked.CompareExchange(ref p, desired, expected);
+
+        if (current == expected)
+        {
+            return true;
+        }
+
+        expected = current;
+        return false;
+    }
+
     // Atomically add a signed value; returns the previous value.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static partial nint mi_atomic_addi(ref nint p, nint add) => unchecked((nint)mi_atomic_add_acq_rel(ref Unsafe.As<nint, nuint>(ref p), (nuint)add));
@@ -294,4 +308,20 @@ public static unsafe partial class Mimalloc
     // Yield
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static partial void mi_atomic_yield() => Thread.Yield();
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void mi_atomic_yield_sleep(ref nuint ticks, nuint ticks_until_sleep)
+    {
+        nuint n = ticks;
+        ticks = ((n == 0) || (n > ticks_until_sleep)) ? ticks_until_sleep : (n - 1);
+
+        if (n > 1)
+        {
+            mi_atomic_yield();
+        }
+        else
+        {
+            Thread.Sleep(0);
+        }
+    }
 }

@@ -28,5 +28,5 @@ internal unsafe struct mi_tld_t
     public mi_os_tld_t os;
 
     // statistics
-    public mi_stats_t stats;
+    public mi_stats_internal_t stats;
 }

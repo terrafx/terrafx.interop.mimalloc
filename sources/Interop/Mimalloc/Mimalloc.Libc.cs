@@ -25,17 +25,10 @@ public static unsafe partial class Mimalloc
     private static extern void* memcpy(void* destination, [NativeTypeName("const void*")] void* source, [NativeTypeName("size_t")] nuint num);
 
     [DllImport("libc", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    private static extern void* memchr(void* ptr, int value, [NativeTypeName("size_t")] nuint num);
-
-    [DllImport("libc", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     private static extern void* memset(void* ptr, int value, [NativeTypeName("size_t")] nuint num);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static nuint offsetof(void* type, void* member) => (nuint)member - (nuint)type;
-
-    [DllImport("libc", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    [return: NativeTypeName("size_t")]
-    private static extern nuint strlen([NativeTypeName("const char*")] sbyte* str);
 
     private static int VM_MAKE_TAG(int tag)
     {

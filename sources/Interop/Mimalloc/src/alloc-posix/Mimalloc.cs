@@ -16,6 +16,9 @@ public static unsafe partial class Mimalloc
     public static partial nuint mi_malloc_usable_size(void* p) => mi_usable_size(p);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static partial nuint mi_malloc_good_size(nuint size) => mi_good_size(size);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static partial void mi_cfree(void* p)
     {
         if (mi_is_in_heap_region(p))
@@ -40,7 +43,7 @@ public static unsafe partial class Mimalloc
             return EINVAL;
         }
 
-        if (!_mi_is_power_of_two(alignment))
+        if ((alignment == 0) || !_mi_is_power_of_two(alignment))
         {
             // not a power of 2
             return EINVAL;
@@ -61,8 +64,8 @@ public static unsafe partial class Mimalloc
 
     public static partial void* mi_memalign(nuint alignment, nuint size)
     {
-        void* p = mi_malloc_satisfies_alignment(alignment, size) ? mi_malloc(size) : mi_malloc_aligned(size, alignment);
-        mi_assert_internal((MI_DEBUG > 1) && (((nuint)p % alignment) == 0));
+        void* p = mi_malloc_aligned(size, alignment);
+        mi_assert_internal((MI_DEBUG > 1) && ((alignment == 0) || (((nuint)p % alignment) == 0)));
         return p;
     }
 
@@ -90,12 +93,6 @@ public static unsafe partial class Mimalloc
             return null;
         }
 
-        if ((size & (alignment - 1)) != 0)
-        {
-            // C11 requires integral multiple, see <https://en.cppreference.com/w/c/memory/aligned_alloc>
-            return null;
-        }
-
         void* p = mi_malloc_satisfies_alignment(alignment, size) ? mi_malloc(size) : mi_malloc_aligned(size, alignment);
         mi_assert_internal((MI_DEBUG > 1) && (((nuint)p % alignment) == 0));
 
@@ -105,7 +102,13 @@ public static unsafe partial class Mimalloc
     public static partial void* mi_reallocarray(void* p, nuint count, nuint size)
     {
         // BSD
-        void* newp = mi_reallocn(p, count, size);
+        if (mi_count_size_overflow(count, size, out nuint total))
+        {
+            last_errno = EOVERFLOW;
+            return null;
+        }
+
+        void* newp = mi_realloc(p, total);
 
         if (newp == null)
         {
@@ -113,6 +116,39 @@ public static unsafe partial class Mimalloc
         }
 
         return newp;
+    }
+
+    public static partial int mi_reallocarr(void* ptrp, nuint count, nuint size)
+    {
+        if ((ptrp == null) || (size == 0))
+        {
+            last_errno = EINVAL;
+            return last_errno;
+        }
+
+        if (mi_count_size_overflow(count, size, out nuint total))
+        {
+            last_errno = EOVERFLOW;
+            return last_errno;
+        }
+
+        void** p = (void**)ptrp;
+        if (total == 0)
+        {
+            mi_free(*p);
+            *p = null;
+            return 0;
+        }
+
+        void* newp = mi_realloc(*p, total);
+        if (newp == null)
+        {
+            last_errno = ENOMEM;
+            return last_errno;
+        }
+
+        *p = newp;
+        return 0;
     }
 
     public static partial void* mi__expand(void* p, nuint newsize)
@@ -136,12 +172,17 @@ public static unsafe partial class Mimalloc
         }
 
         nuint len;
+        nuint max_len = (nuint)PTRDIFF_MAX;
 
-        for (len = 0; s[len] != 0; len++)
+        for (len = 0; (len < max_len) && (s[len] != 0); len++)
         {
         }
 
-        nuint size = (len + 1) * sizeof(ushort);
+        if (mi_mul_overflow(len + 1, sizeof(ushort), out nuint size) || (size > max_len))
+        {
+            return null;
+        }
+
         ushort* p = (ushort*)mi_malloc(size);
 
         if (p != null)
@@ -156,14 +197,14 @@ public static unsafe partial class Mimalloc
 
     public static partial int mi_dupenv_s(sbyte** buf, nuint* size, sbyte* name)
     {
-        if ((buf == null) || (name == null))
-        {
-            return EINVAL;
-        }
-
         if (size != null)
         {
             *size = 0;
+        }
+
+        if ((buf == null) || (name == null))
+        {
+            return EINVAL;
         }
 
         // mscver warning 4996
@@ -184,7 +225,7 @@ public static unsafe partial class Mimalloc
 
             if (size != null)
             {
-                *size = strlen(p);
+                *size = mi_strnlen(p, MI_MAX_ALLOC_SIZE) + 1;
             }
         }
 
@@ -193,14 +234,14 @@ public static unsafe partial class Mimalloc
 
     public static partial int mi_wdupenv_s(ushort** buf, nuint* size, ushort* name)
     {
-        if ((buf == null) || (name == null))
-        {
-            return EINVAL;
-        }
-
         if (size != null)
         {
             *size = 0;
+        }
+
+        if ((buf == null) || (name == null))
+        {
+            return EINVAL;
         }
 
         if (IsWindows)
@@ -223,7 +264,7 @@ public static unsafe partial class Mimalloc
 
                 if (size != null)
                 {
-                    *size = wcslen(p);
+                    *size = wcslen(p) + 1;
                 }
             }
             return 0;

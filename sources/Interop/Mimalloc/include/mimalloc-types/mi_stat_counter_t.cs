@@ -3,13 +3,13 @@
 // This file includes code based on the mi_stat_counter_t struct from https://github.com/microsoft/mimalloc
 // The original code is Copyright © Microsoft. All rights reserved. Licensed under the MIT License (MIT).
 
+using System.Runtime.InteropServices;
+
 namespace TerraFX.Interop.Mimalloc;
 
-internal struct mi_stat_counter_t
+[StructLayout(LayoutKind.Sequential)]
+public struct mi_stat_counter_t
 {
     [NativeTypeName("int64_t")]
     public long total;
-
-    [NativeTypeName("int64_t")]
-    public long count;
 }

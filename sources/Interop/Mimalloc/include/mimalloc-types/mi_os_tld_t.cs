@@ -13,5 +13,5 @@ internal unsafe struct mi_os_tld_t
     public nuint region_idx;
 
     // points to tld stats
-    public mi_stats_t* stats;
+    public mi_stats_internal_t* stats;
 }

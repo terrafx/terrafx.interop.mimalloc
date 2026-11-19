@@ -10,8 +10,12 @@ namespace TerraFX.Interop.Mimalloc;
 
 public static unsafe partial class Mimalloc
 {
-    // major + 2 digits minor
-    public static readonly int MI_MALLOC_VERSION = 167;
+    // major + 2 digits minor + 2 digits patch
+    public static readonly int MI_MALLOC_VERSION = 11502;
+
+    public const int MI_STAT_VERSION = 4;
+
+    public const nuint MI_ALIGNED_MAX = 1024 * 1024;
 
     // ------------------------------------------------------
     // Standard malloc interface
@@ -26,6 +30,8 @@ public static unsafe partial class Mimalloc
     public static partial void* mi_expand(void* p, [NativeTypeName("size_t")] nuint newsize);
 
     public static partial void mi_free(void* p);
+
+    public static partial void mi_free_small(void* p);
 
     [return: NativeTypeName("char*")]
     public static partial sbyte* mi_strdup([NativeTypeName("const char*")] sbyte* s);
@@ -58,6 +64,22 @@ public static unsafe partial class Mimalloc
     [return: NativeTypeName("size_t")]
     public static partial nuint mi_good_size([NativeTypeName("size_t")] nuint size);
 
+    public static partial void* mi_umalloc([NativeTypeName("size_t")] nuint size, [NativeTypeName("size_t*")] nuint* block_size);
+
+    public static partial void* mi_ucalloc([NativeTypeName("size_t")] nuint count, [NativeTypeName("size_t")] nuint size, [NativeTypeName("size_t*")] nuint* block_size);
+
+    public static partial void* mi_urealloc(void* p, [NativeTypeName("size_t")] nuint newsize, [NativeTypeName("size_t*")] nuint* block_size_pre, [NativeTypeName("size_t*")] nuint* block_size_post);
+
+    public static partial void mi_ufree(void* p, [NativeTypeName("size_t*")] nuint* block_size);
+
+    public static partial void* mi_umalloc_aligned([NativeTypeName("size_t")] nuint size, [NativeTypeName("size_t")] nuint alignment, [NativeTypeName("size_t*")] nuint* block_size);
+
+    public static partial void* mi_uzalloc_aligned([NativeTypeName("size_t")] nuint size, [NativeTypeName("size_t")] nuint alignment, [NativeTypeName("size_t*")] nuint* block_size);
+
+    public static partial void* mi_umalloc_small([NativeTypeName("size_t")] nuint size, [NativeTypeName("size_t*")] nuint* block_size);
+
+    public static partial void* mi_uzalloc_small([NativeTypeName("size_t")] nuint size, [NativeTypeName("size_t*")] nuint* block_size);
+
     // ------------------------------------------------------
     // Internals
     // ------------------------------------------------------
@@ -70,6 +92,8 @@ public static unsafe partial class Mimalloc
 
     public static partial void mi_collect(bool force);
 
+    public static partial void mi_collect_reduce([NativeTypeName("size_t")] nuint target_thread_owned);
+
     public static partial int mi_version();
 
     public static partial void mi_stats_reset();
@@ -81,11 +105,24 @@ public static unsafe partial class Mimalloc
 
     public static partial void mi_stats_print_out([NativeTypeName("mi_output_fun*")] mi_output_fun? @out, void* arg);
 
+    // The caller must initialize stats->size and stats->version before calling.
+    public static partial bool mi_stats_get(mi_stats_t* stats);
+
+    // Free a returned allocation with mi_free; a caller-provided buffer is not reallocated.
+    [return: NativeTypeName("char*")]
+    public static partial sbyte* mi_stats_get_json([NativeTypeName("size_t")] nuint buf_size, [NativeTypeName("char*")] sbyte* buf);
+
+    public static partial void mi_options_print();
+
     // The following members have not been ported as they aren't needed for .NET:
     //  * void mi_process_init()
     //  * void mi_thread_init()
 
+    public static partial void mi_process_done();
+
     public static partial void mi_thread_done();
+
+    public static partial void mi_thread_set_in_threadpool();
 
     public static partial void mi_thread_stats_print_out([NativeTypeName("mi_output_fun*")] mi_output_fun? @out, void* arg);
 
@@ -128,6 +165,28 @@ public static unsafe partial class Mimalloc
     [return: NativeTypeName("mi_heap_t*")]
     public static partial IntPtr mi_heap_new();
 
+    [return: NativeTypeName("mi_heap_t*")]
+    public static partial IntPtr mi_heap_new_ex(int heap_tag, bool allow_destroy, [NativeTypeName("mi_arena_id_t")] int arena_id);
+
+    public static partial void mi_heap_guarded_set_sample_rate(IntPtr heap, [NativeTypeName("size_t")] nuint sample_rate, [NativeTypeName("size_t")] nuint seed);
+
+    public static partial void mi_heap_guarded_set_size_bound(IntPtr heap, [NativeTypeName("size_t")] nuint min, [NativeTypeName("size_t")] nuint max);
+
+    [return: NativeTypeName("mi_subproc_id_t")]
+    public static partial IntPtr mi_subproc_main();
+
+    [return: NativeTypeName("mi_subproc_id_t")]
+    public static partial IntPtr mi_subproc_new();
+
+    public static partial void mi_subproc_delete([NativeTypeName("mi_subproc_id_t")] IntPtr subproc);
+
+    public static partial void mi_subproc_add_current_thread([NativeTypeName("mi_subproc_id_t")] IntPtr subproc);
+
+    public static partial bool mi_abandoned_visit_blocks([NativeTypeName("mi_subproc_id_t")] IntPtr subproc_id, int heap_tag, bool visit_blocks, mi_block_visit_fun visitor, void* arg);
+
+    [return: NativeTypeName("mi_heap_t*")]
+    public static partial IntPtr mi_heap_new_in_arena([NativeTypeName("mi_arena_id_t")] int arena_id);
+
     public static partial void mi_heap_delete([NativeTypeName("mi_heap_t*")] IntPtr heap);
 
     public static partial void mi_heap_destroy([NativeTypeName("mi_heap_t*")] IntPtr heap);
@@ -153,9 +212,36 @@ public static unsafe partial class Mimalloc
 
     public static partial void* mi_heap_malloc_small([NativeTypeName("mi_heap_t*")] IntPtr heap, [NativeTypeName("size_t")] nuint size);
 
+    public static partial void* mi_heap_zalloc_small([NativeTypeName("mi_heap_t*")] IntPtr heap, [NativeTypeName("size_t")] nuint size);
+
     public static partial void* mi_heap_realloc([NativeTypeName("mi_heap_t*")] IntPtr heap, void* p, [NativeTypeName("size_t")] nuint newsize);
 
+    // Compatibility aliases for mimalloc's v3 thread-heap API.
+    [return: NativeTypeName("mi_theap_t*")]
+    public static partial IntPtr mi_theap_get_default();
+
+    [return: NativeTypeName("mi_theap_t*")]
+    public static partial IntPtr mi_theap_set_default([NativeTypeName("mi_theap_t*")] IntPtr heap);
+
+    public static partial void mi_theap_collect([NativeTypeName("mi_theap_t*")] IntPtr heap, bool force);
+
+    public static partial void* mi_theap_malloc([NativeTypeName("mi_theap_t*")] IntPtr heap, [NativeTypeName("size_t")] nuint size);
+
+    public static partial void* mi_theap_zalloc([NativeTypeName("mi_theap_t*")] IntPtr heap, [NativeTypeName("size_t")] nuint size);
+
+    public static partial void* mi_theap_calloc([NativeTypeName("mi_theap_t*")] IntPtr heap, [NativeTypeName("size_t")] nuint count, [NativeTypeName("size_t")] nuint size);
+
+    public static partial void* mi_theap_malloc_small([NativeTypeName("mi_theap_t*")] IntPtr heap, [NativeTypeName("size_t")] nuint size);
+
+    public static partial void* mi_theap_malloc_aligned([NativeTypeName("mi_theap_t*")] IntPtr heap, [NativeTypeName("size_t")] nuint size, [NativeTypeName("size_t")] nuint alignment);
+
+    public static partial void* mi_theap_realloc([NativeTypeName("mi_theap_t*")] IntPtr heap, void* p, [NativeTypeName("size_t")] nuint newsize);
+
     public static partial void* mi_heap_reallocn([NativeTypeName("mi_heap_t*")] IntPtr heap, void* p, [NativeTypeName("size_t")] nuint count, [NativeTypeName("size_t")] nuint size);
+
+    public static partial void* mi_heap_alloc_new([NativeTypeName("mi_heap_t*")] IntPtr heap, [NativeTypeName("size_t")] nuint size);
+
+    public static partial void* mi_heap_alloc_new_n([NativeTypeName("mi_heap_t*")] IntPtr heap, [NativeTypeName("size_t")] nuint count, [NativeTypeName("size_t")] nuint size);
 
     public static partial void* mi_heap_reallocf([NativeTypeName("mi_heap_t*")] IntPtr heap, void* p, [NativeTypeName("size_t")] nuint newsize);
 
@@ -235,6 +321,8 @@ public static unsafe partial class Mimalloc
 
     public static partial bool mi_heap_visit_blocks([NativeTypeName("const mi_heap_t*")] IntPtr heap, bool visit_blocks, mi_block_visit_fun visitor, void* arg);
 
+    public static partial bool mi_unsafe_heap_page_is_under_utilized([NativeTypeName("mi_heap_t*")] IntPtr heap, void* p, [NativeTypeName("size_t")] nuint perc_threshold);
+
     // Experimental
     public static partial bool mi_is_in_heap_region([NativeTypeName("const void*")] void* p);
 
@@ -243,6 +331,22 @@ public static unsafe partial class Mimalloc
     public static partial int mi_reserve_huge_os_pages_interleave([NativeTypeName("size_t")] nuint pages, [NativeTypeName("size_t")] nuint numa_nodes, [NativeTypeName("size_t")] nuint timeout_msecs);
 
     public static partial int mi_reserve_huge_os_pages_at([NativeTypeName("size_t")] nuint pages, int numa_node, [NativeTypeName("size_t")] nuint timeout_msecs);
+
+    public static partial int mi_reserve_huge_os_pages_at_ex([NativeTypeName("size_t")] nuint pages, int numa_node, [NativeTypeName("size_t")] nuint timeout_msecs, bool exclusive, [NativeTypeName("mi_arena_id_t*")] int* arena_id);
+
+    public static partial int mi_reserve_os_memory([NativeTypeName("size_t")] nuint size, bool commit, bool allow_large);
+
+    public static partial int mi_reserve_os_memory_ex([NativeTypeName("size_t")] nuint size, bool commit, bool allow_large, bool exclusive, [NativeTypeName("mi_arena_id_t*")] int* arena_id);
+
+    public static partial bool mi_manage_os_memory([NativeTypeName("void*")] void* start, [NativeTypeName("size_t")] nuint size, bool is_committed, bool is_large, bool is_zero, int numa_node);
+
+    public static partial bool mi_manage_os_memory_ex([NativeTypeName("void*")] void* start, [NativeTypeName("size_t")] nuint size, bool is_committed, bool is_large, bool is_zero, int numa_node, bool exclusive, [NativeTypeName("mi_arena_id_t*")] int* arena_id);
+
+    public static partial void* mi_arena_area([NativeTypeName("mi_arena_id_t")] int arena_id, [NativeTypeName("size_t*")] nuint* size);
+
+    public static partial void mi_debug_show_arenas(bool show_inuse, bool show_abandoned, bool show_purge);
+
+    public static partial void mi_arenas_print();
 
     // deprecated
     public static partial int mi_reserve_huge_os_pages([NativeTypeName("size_t")] nuint pages, double max_secs, [NativeTypeName("size_t*")] nuint* pages_reserved);
@@ -460,6 +564,11 @@ public static unsafe partial class Mimalloc
     [return: NativeTypeName("long")]
     public static partial int mi_option_get(mi_option_t option);
 
+    public static partial int mi_option_get_clamp(mi_option_t option, int min, int max);
+
+    [return: NativeTypeName("size_t")]
+    public static partial nuint mi_option_get_size(mi_option_t option);
+
     public static partial void mi_option_set(mi_option_t option, [NativeTypeName("long")] int value);
 
     public static partial void mi_option_set_default(mi_option_t option, [NativeTypeName("long")] int value);
@@ -480,6 +589,9 @@ public static unsafe partial class Mimalloc
     [return: NativeTypeName("size_t")]
     public static partial nuint mi_malloc_usable_size([NativeTypeName("const void*")] void* p);
 
+    [return: NativeTypeName("size_t")]
+    public static partial nuint mi_malloc_good_size([NativeTypeName("size_t")] nuint size);
+
     public static partial int mi_posix_memalign(void** p, [NativeTypeName("size_t")] nuint alignment, [NativeTypeName("size_t")] nuint size);
 
     public static partial void* mi_memalign([NativeTypeName("size_t")] nuint alignment, [NativeTypeName("size_t")] nuint size);
@@ -491,6 +603,8 @@ public static unsafe partial class Mimalloc
     public static partial void* mi_aligned_alloc([NativeTypeName("size_t")] nuint alignment, [NativeTypeName("size_t")] nuint size);
 
     public static partial void* mi_reallocarray(void* p, [NativeTypeName("size_t")] nuint count, [NativeTypeName("size_t")] nuint size);
+
+    public static partial int mi_reallocarr(void* ptrp, [NativeTypeName("size_t")] nuint count, [NativeTypeName("size_t")] nuint size);
 
     public static partial void* mi_aligned_recalloc(void* p, [NativeTypeName("size_t")] nuint newcount, [NativeTypeName("size_t")] nuint size, [NativeTypeName("size_t")] nuint alignment);
 

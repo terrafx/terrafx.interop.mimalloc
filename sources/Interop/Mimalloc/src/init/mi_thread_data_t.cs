@@ -12,4 +12,6 @@ internal struct mi_thread_data_t
     public mi_heap_t heap;
 
     public mi_tld_t tld;
+
+    public mi_memid_t memid;
 }

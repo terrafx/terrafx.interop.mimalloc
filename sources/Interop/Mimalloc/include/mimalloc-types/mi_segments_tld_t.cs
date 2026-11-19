@@ -14,8 +14,8 @@ internal unsafe struct mi_segments_tld_t
     // queue of segments with free medium pages
     public mi_segment_queue_t medium_free;
 
-    // queue of freed pages that can be reset
-    public mi_page_queue_t pages_reset;
+    // queue of freed pages that are delayed for purge
+    public mi_page_queue_t pages_purge;
 
     // current number of segments;
     [NativeTypeName("nuint")]
@@ -33,19 +33,14 @@ internal unsafe struct mi_segments_tld_t
     [NativeTypeName("nuint")]
     public nuint peak_size;
 
-    // number of segments in the cache
-    [NativeTypeName("nuint")]
-    public nuint cache_count;
+    // number of currently owned segments reclaimed from another thread
+    [NativeTypeName("size_t")]
+    public nuint reclaim_count;
 
-    // total size of all segments in the cache
-    [NativeTypeName("nuint")]
-    public nuint cache_size;
-
-    // (small) cache of segments
-    public mi_segment_t* cache;
+    public mi_subproc_t* subproc;
 
     // points to tld stats
-    public mi_stats_t* stats;
+    public mi_stats_internal_t* stats;
 
     // points to os stats
     public mi_os_tld_t* os;

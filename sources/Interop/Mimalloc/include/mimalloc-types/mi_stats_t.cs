@@ -3,54 +3,90 @@
 // This file includes code based on the mi_stats_t struct from https://github.com/microsoft/mimalloc
 // The original code is Copyright © Microsoft. All rights reserved. Licensed under the MIT License (MIT).
 
+using System.Runtime.InteropServices;
+
 namespace TerraFX.Interop.Mimalloc;
 
-internal struct mi_stats_t
+[StructLayout(LayoutKind.Sequential)]
+public struct mi_stats_t
 {
-    public mi_stat_count_t segments;
+    [NativeTypeName("size_t")]
+    // Set to sizeof(mi_stats_t) before calling mi_stats_get.
+    public nuint size;
+
+    [NativeTypeName("size_t")]
+    // Set to MI_STAT_VERSION before calling mi_stats_get.
+    public nuint version;
 
     public mi_stat_count_t pages;
-
     public mi_stat_count_t reserved;
-
     public mi_stat_count_t committed;
-
-    public mi_stat_count_t reset;
-
+    public mi_stat_counter_t reset;
+    public mi_stat_counter_t purged;
     public mi_stat_count_t page_committed;
-
-    public mi_stat_count_t segments_abandoned;
-
     public mi_stat_count_t pages_abandoned;
-
     public mi_stat_count_t threads;
-
-    public mi_stat_count_t huge;
-
-    public mi_stat_count_t giant;
-
-    public mi_stat_count_t malloc;
-
-    public mi_stat_count_t segments_cache;
-
-    public mi_stat_counter_t pages_extended;
+    public mi_stat_count_t malloc_normal;
+    public mi_stat_count_t malloc_huge;
+    public mi_stat_count_t malloc_requested;
 
     public mi_stat_counter_t mmap_calls;
-
     public mi_stat_counter_t commit_calls;
+    public mi_stat_counter_t reset_calls;
+    public mi_stat_counter_t purge_calls;
+    public mi_stat_counter_t arena_count;
+    public mi_stat_counter_t malloc_normal_count;
+    public mi_stat_counter_t malloc_huge_count;
+    public mi_stat_counter_t malloc_guarded_count;
 
-    public mi_stat_counter_t page_no_retire;
+    public mi_stat_counter_t arena_rollback_count;
+    public mi_stat_counter_t arena_purges;
+    public mi_stat_counter_t pages_extended;
+    public mi_stat_counter_t pages_retire;
+    public mi_stat_counter_t page_searches;
+    public mi_stat_counter_t page_searches_count;
 
-    public mi_stat_counter_t searches;
+    public mi_stat_count_t segments;
+    public mi_stat_count_t segments_abandoned;
+    public mi_stat_count_t segments_cache;
+    public mi_stat_count_t _segments_reserved;
+    public mi_stat_counter_t pages_reclaim_on_alloc;
+    public mi_stat_counter_t pages_reclaim_on_free;
+    public mi_stat_counter_t pages_reabandon_full;
+    public mi_stat_counter_t pages_unabandon_busy_wait;
 
-    public mi_stat_counter_t huge_count;
+    [NativeTypeName("mi_stat_count_t [4]")]
+    public _stat_reserved_e__FixedBuffer _stat_reserved;
 
-    public mi_stat_counter_t giant_count;
+    [NativeTypeName("mi_stat_counter_t [4]")]
+    public _stat_counter_reserved_e__FixedBuffer _stat_counter_reserved;
 
     [NativeTypeName("mi_stat_count_t [MI_BIN_HUGE + 1]")]
-    public _normal_e__FixedBuffer normal;
+    public _bins_e__FixedBuffer malloc_bins;
 
-    public partial struct _normal_e__FixedBuffer
+    [NativeTypeName("mi_stat_count_t [MI_BIN_HUGE + 1]")]
+    public _bins_e__FixedBuffer page_bins;
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct _stat_reserved_e__FixedBuffer
+    {
+        public mi_stat_count_t e0;
+        public mi_stat_count_t e1;
+        public mi_stat_count_t e2;
+        public mi_stat_count_t e3;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct _stat_counter_reserved_e__FixedBuffer
+    {
+        public mi_stat_counter_t e0;
+        public mi_stat_counter_t e1;
+        public mi_stat_counter_t e2;
+        public mi_stat_counter_t e3;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct _bins_e__FixedBuffer
     {
         public mi_stat_count_t e0;
         public mi_stat_count_t e1;
